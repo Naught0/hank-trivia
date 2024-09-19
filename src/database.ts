@@ -1,5 +1,7 @@
-import { Hank } from "@hank.chat/pdk";
+import type { hank } from "@hank.chat/pdk";
 import { PreparedStatement, Results } from "@hank.chat/types";
+
+type Hank = typeof hank;
 
 export class Database {
   protected hank: Hank;

@@ -6,17 +6,20 @@ import { handleMessage } from "./plugin";
 export * from "@hank.chat/pdk";
 
 hank.pluginMetadata = Metadata.create({
-  name: "sample-typescript-plugin",
-  description: "A sample plugin to demonstrate some functionality.",
+  name: "hank-trivia",
+  description: "do trivia with your friends that you definitely have",
   version: "0.1.0",
   database: true,
 });
+
 hank.registerInstallFunction(install);
 hank.registerInitializeFunction(initialize);
 hank.registerMessageHandler(handle_message);
 hank.registerCommandHandler(handle_command);
 
 export const db = new Database(hank);
+
+export const get_metadata = () => {};
 
 function install() {
   db.createTables();

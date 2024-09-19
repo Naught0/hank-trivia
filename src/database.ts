@@ -35,7 +35,7 @@ export class Database {
       sql: "INSERT INTO trivia_game (channel_id, is_active) VALUES (?, 1) RETURNING *",
       values: [channel_id],
     });
-    return await this.hank.dbQuery(stmt);
+    return responseFromJson<Game>(await this.hank.dbQuery(stmt))[0];
   }
 
   public async getActiveGame(channel_id: string) {
@@ -81,12 +81,12 @@ export class Database {
     return responseFromJson<GameState>(resp)[0];
   }
 
-  public async updateQuestionIndex(game_id: number, question_index: number) {
-    const preparedStatement = PreparedStatement.create({
+  public async updateQuestionIndex(gameId: number, questionIdx: number) {
+    const stmt = PreparedStatement.create({
       sql: "UPDATE trivia_game_state SET question_index = ? WHERE game_id = ? RETURNING *",
-      values: [question_index.toString(), game_id.toString()],
+      values: [questionIdx.toString(), gameId.toString()],
     });
-    const resp = await this.hank.dbQuery(preparedStatement);
+    const resp = await this.hank.dbQuery(stmt);
 
     return responseFromJson<GameState>(resp)[0];
   }
@@ -100,13 +100,30 @@ export class Database {
     return responseFromJson<GameState>(resp)[0];
   }
 
-  public async createScore(discord_user_id: string, game_id: string) {
+  public async createScore(discord_user_id: string, gameId: number) {
     const stmt = PreparedStatement.create({
       sql: "INSERT INTO trivia_score (discord_user_id, game_id) VALUES (?, ?) RETURNING *",
-      values: [discord_user_id, game_id],
+      values: [discord_user_id, gameId.toString()],
     });
 
     await this.hank.dbQuery(stmt);
+  }
+
+  public async getGameScores(gameId: number) {
+    const stmt = PreparedStatement.create({
+      sql: "SELECT discord_user_id FROM trivia_score WHERE game_id = ?",
+      values: [gameId.toString()],
+    });
+    const resp = await this.hank.dbQuery(stmt);
+    return responseFromJson<UserScore>(resp);
+  }
+  public async getAllTimeScores() {
+    const stmt = PreparedStatement.create({
+      sql: "SELECT discord_user_id, count(*) AS count FROM trivia_score GROUP BY discord_user_id ORDER BY count DESC",
+      values: [],
+    });
+    const resp = await this.hank.dbQuery(stmt);
+    return responseFromJson<UserScore>(resp);
   }
 }
 
@@ -132,4 +149,9 @@ export interface GameScore {
   id: number;
   discord_user_id: string;
   game_id: number;
+}
+
+export interface UserScore {
+  discord_user_id: string;
+  count: number;
 }

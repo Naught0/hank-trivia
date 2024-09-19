@@ -17,9 +17,8 @@ hank.registerInitializeFunction(initialize);
 hank.registerMessageHandler(handle_message);
 hank.registerCommandHandler(handle_command);
 
-export const db = new Database(hank);
-
 function install() {
+  const db = new Database(hank);
   db.createTables();
 }
 

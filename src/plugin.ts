@@ -2,32 +2,34 @@ import { Message } from "@hank.chat/types";
 import { Database } from "./database";
 import { getQuestions } from "./trivia-api";
 import { HandleMessageInput, hank } from "@hank.chat/pdk";
-import { db } from ".";
 
-// Using global hank works for everything
-// passing it around doesn't work
-// NEed to see return type from database queries
-// NEed to figure out if shit is async or not
-export function handleMessage(input: HandleMessageInput) {
+export async function handleMessage(input: HandleMessageInput) {
+  const db = new Database(hank);
   const { message } = input;
+  const activeGame = await db.getActiveGame(message.channelId);
 
-  if (message.content === "!trivia") {
+  if (message.content.startsWith("!trivia")) {
+    if (activeGame?.is_active) {
+      return hank.sendMessage(
+        Message.create({
+          content: "Game already in progress",
+          channelId: message.channelId,
+        }),
+      );
+    }
+
     console.log("WE STARTIN TRIVIA");
-    db.createTables();
-    return startGame(db, message.channelId);
+    return await startGame(db, message.channelId);
   }
+  if (!activeGame?.is_active) return;
 
-  if (!message.content.startsWith("!strivia")) {
-    return stopGame(db, message.channelId);
+  if (message.content.startsWith("!strivia")) {
+    return await stopGame(db, message.channelId, activeGame.id);
   }
-
-  const gameId = db.getCurrentGame(message.channelId);
-  if (!gameId)
-    return hank.sendMessage({ ...message, content: "No game in progress" });
 }
 
 async function hasActiveGame(db: Database, channelId: string) {
-  const game = await db.getCurrentGame(channelId);
+  const game = await db.getActiveGame(channelId);
   console.log("CURRENT GAME", JSON.stringify(game));
   return !!game;
 }
@@ -40,6 +42,7 @@ async function startGame(db: Database, channelId: string, amount = 10) {
 
   const resp = await db.createGame(channelId);
   const response = getQuestions({ amount });
+  console.log("Got response");
   const gameState = await db.createGameState({
     question_total: amount,
     question_index: 0,
@@ -48,19 +51,18 @@ async function startGame(db: Database, channelId: string, amount = 10) {
   });
 
   hank.sendMessage(
-    Message.create({ content: JSON.stringify(gameState), channelId }),
+    Message.create({
+      content: "Starting trivia, use !strivia to stop",
+      channelId,
+    }),
   );
   // begin game
-  stopGame(db, channelId);
+
+  await stopGame(db, channelId, gameState.game_id);
 }
 
-async function stopGame(db: Database, channelId: string) {
-  if (!hasActiveGame(db, channelId))
-    return hank.sendMessage(
-      Message.create({ content: "No game in progress", channelId }),
-    );
-
-  db.stopGame(channelId);
+async function stopGame(db: Database, channelId: string, gameId: number) {
+  await db.stopGame(gameId);
   // TODO: Calculate winner here
   return hank.sendMessage(
     Message.create({ content: "Ok trivia stopped!", channelId }),

@@ -10,10 +10,6 @@ export class Database {
     this.hank = hank;
   }
 
-  private responseFromJson<T>(results: Results) {
-    return results.rows.map((row) => JSON.parse(row) as T);
-  }
-
   public async createTables() {
     const createGameTable = PreparedStatement.create({
       sql: "CREATE TABLE IF NOT EXISTS trivia_game (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, is_active INTEGER)",
@@ -35,13 +31,11 @@ export class Database {
   }
 
   public async createGame(channel_id: string) {
-    const preparedStatement = PreparedStatement.create({
-      sql: "INSERT INTO trivia_game (channel_id, is_active) VALUES (?, 1)",
+    const stmt = PreparedStatement.create({
+      sql: "INSERT INTO trivia_game (channel_id, is_active) VALUES (?, 1) RETURNING *",
       values: [channel_id],
     });
-    const resp = await this.hank.dbQuery(preparedStatement);
-
-    return this.responseFromJson<Game>(resp)[0];
+    return await this.hank.dbQuery(stmt);
   }
 
   public async getActiveGame(channel_id: string) {
@@ -50,7 +44,7 @@ export class Database {
       values: [channel_id],
     });
     const resp = await this.hank.dbQuery(preparedStatement);
-    const games = this.responseFromJson<Game>(resp);
+    const games = responseFromJson<Game>(resp);
     if (!games.length) return null;
 
     return games[0];
@@ -72,9 +66,9 @@ export class Database {
     }
   }
 
-  public async createGameState(state: Omit<GameState, "id">) {
+  public async initGameState(state: Omit<GameState, "id">) {
     const stmt = PreparedStatement.create({
-      sql: "INSERT INTO trivia_game_state (game_id, api_response, question_index, question_total) VALUES (?, ?, ?, ?)",
+      sql: "INSERT INTO trivia_game_state (game_id, api_response, question_index, question_total) VALUES (?, ?, ?, ?) RETURNING *",
       values: [
         state.game_id.toString(),
         state.api_response,
@@ -83,19 +77,18 @@ export class Database {
       ],
     });
     const resp = await this.hank.dbQuery(stmt);
-    console.log(JSON.stringify(resp.rows, undefined, 2));
 
-    return this.responseFromJson<GameState>(resp)[0];
+    return responseFromJson<GameState>(resp)[0];
   }
 
   public async updateQuestionIndex(game_id: number, question_index: number) {
     const preparedStatement = PreparedStatement.create({
-      sql: "UPDATE trivia_game_state SET question_index = ? WHERE game_id = ?",
+      sql: "UPDATE trivia_game_state SET question_index = ? WHERE game_id = ? RETURNING *",
       values: [question_index.toString(), game_id.toString()],
     });
     const resp = await this.hank.dbQuery(preparedStatement);
 
-    return this.responseFromJson<GameState>(resp)[0];
+    return responseFromJson<GameState>(resp)[0];
   }
 
   public async getGameState(game_id: number) {
@@ -104,17 +97,21 @@ export class Database {
       values: [game_id.toString()],
     });
     const resp = await this.hank.dbQuery(stmt);
-    return this.responseFromJson<GameState>(resp)[0];
+    return responseFromJson<GameState>(resp)[0];
   }
 
   public async createScore(discord_user_id: string, game_id: string) {
     const stmt = PreparedStatement.create({
-      sql: "INSERT INTO trivia_score (discord_user_id, game_id) VALUES (?, ?)",
+      sql: "INSERT INTO trivia_score (discord_user_id, game_id) VALUES (?, ?) RETURNING *",
       values: [discord_user_id, game_id],
     });
 
     await this.hank.dbQuery(stmt);
   }
+}
+
+export function responseFromJson<T>(results: Results) {
+  return results.rows.map((row) => JSON.parse(row) as T);
 }
 
 export interface Game {

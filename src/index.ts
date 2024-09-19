@@ -19,8 +19,6 @@ hank.registerCommandHandler(handle_command);
 
 export const db = new Database(hank);
 
-export const get_metadata = () => {};
-
 function install() {
   db.createTables();
 }

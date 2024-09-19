@@ -8,7 +8,7 @@ export class Database {
     this.hank = hank;
   }
 
-  private queryResponseFromJson<T>(results: Results) {
+  private responseFromJson<T>(results: Results) {
     return results.rows.map((row) => JSON.parse(row) as T);
   }
 
@@ -39,7 +39,7 @@ export class Database {
     });
     const resp = await this.hank.dbQuery(preparedStatement);
 
-    return this.queryResponseFromJson<Game>(resp)[0];
+    return this.responseFromJson<Game>(resp)[0];
   }
 
   public async getCurrentGame(channel_id: string) {
@@ -48,7 +48,7 @@ export class Database {
       values: [channel_id],
     });
     const resp = await this.hank.dbQuery(preparedStatement);
-    const games = this.queryResponseFromJson<Game>(resp);
+    const games = this.responseFromJson<Game>(resp);
     if (!games.length) return null;
 
     return games[0];
@@ -82,7 +82,7 @@ export class Database {
     });
     const resp = await this.hank.dbQuery(stmt);
 
-    return this.queryResponseFromJson<GameState>(resp)[0];
+    return this.responseFromJson<GameState>(resp)[0];
   }
 
   public async updateQuestionIndex(game_id: number, question_index: number) {
@@ -92,7 +92,7 @@ export class Database {
     });
     const resp = await this.hank.dbQuery(preparedStatement);
 
-    return this.queryResponseFromJson<GameState>(resp)[0];
+    return this.responseFromJson<GameState>(resp)[0];
   }
 
   public async getGameState(game_id: number) {
@@ -101,7 +101,7 @@ export class Database {
       values: [game_id.toString()],
     });
     const resp = await this.hank.dbQuery(stmt);
-    return this.queryResponseFromJson<GameState>(resp)[0];
+    return this.responseFromJson<GameState>(resp)[0];
   }
 
   public async createScore(discord_user_id: string, game_id: string) {

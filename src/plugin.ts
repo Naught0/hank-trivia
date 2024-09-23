@@ -27,7 +27,7 @@ export class TriviaGame {
     this.commands.push(cmd);
   }
 
-  private getContext(message: Message): Context {
+  private createContext(message: Message): Context {
     return {
       db: this.db,
       message: message,
@@ -64,14 +64,20 @@ export class TriviaGame {
     const content = message.content.toLowerCase();
     let [command, ...args] = content.split(" ");
     command = command.toLowerCase();
+    const context = this.createContext(message);
+
+    for (const handler of this.onMessageHandlers) {
+      await handler(context);
+    }
 
     if (this.activeGame?.is_active) {
+      // TODO: Move this to onMessageHandlers
       this.handleGuess(message);
     }
 
     for (const cmd of this.commands) {
       if (cmd.commandNames.some((cmd) => `${this.prefix}${cmd}` === command)) {
-        return await cmd.execute(this.getContext(message));
+        return await cmd.execute(context);
       }
     }
   }
@@ -96,7 +102,7 @@ export class TriviaGame {
     const nextIdx = this.gameState.question_index + 1;
     if (nextIdx >= this.gameState.question_total) {
       const stopTriviaCmd = new StopTrivia(hank, this.db);
-      await stopTriviaCmd.execute(this.getContext(message));
+      await stopTriviaCmd.execute(this.createContext(message));
     } else {
       this.gameState = await this.db.updateQuestionIndex(
         this.activeGame!.id,

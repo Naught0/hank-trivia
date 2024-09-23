@@ -35,14 +35,8 @@ class TriviaGame {
     }
 
     if (content.startsWith("!trivia")) {
-      if (this.activeGame?.is_active) {
-        await this.sendMessage("Game already in progress");
-      } else {
-        await this.startGame();
-      }
-      return;
+      return await this.startGame();
     }
-
     if (!this.activeGame?.is_active) return;
 
     if (content.startsWith("!strivia")) {
@@ -55,17 +49,16 @@ class TriviaGame {
 
   private async startGame(amount: number = 10): Promise<void> {
     if (this.activeGame?.is_active) {
-      await this.sendMessage("Game already in progress");
-      return;
+      return this.sendMessage("Game already in progress");
     }
 
     this.activeGame = await this.db.createGame(this.channelId);
     if (!this.activeGame) {
-      await this.sendMessage("Error creating game");
-      return;
+      return this.sendMessage("Error creating game");
     }
 
     const response = getQuestions({ amount });
+    this.apiResponse = response;
     this.gameState = await this.db.initGameState({
       question_total: amount,
       question_index: 0,
@@ -73,8 +66,8 @@ class TriviaGame {
       game_id: this.activeGame.id,
     });
 
-    await this.sendMessage("Starting trivia, use !strivia to stop");
-    await this.sendQuestion();
+    this.sendMessage("Starting trivia, use !strivia to stop");
+    this.sendQuestion();
   }
 
   private async handleGuess(message: Message): Promise<void> {
@@ -102,7 +95,7 @@ class TriviaGame {
         this.activeGame!.id,
         nextIdx,
       );
-      await this.sendQuestion();
+      this.sendQuestion();
     }
   }
 
@@ -151,7 +144,7 @@ class TriviaGame {
     };
   }
 
-  private async sendQuestion(): Promise<void> {
+  private sendQuestion() {
     if (!this.gameState) return;
     if (!this.apiResponse) return;
 
@@ -163,7 +156,7 @@ class TriviaGame {
     const content = `**Question ${this.gameState.question_index + 1} / ${this.gameState.question_total}**:
 ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipleChoice ? `\n**Answers**:\n${choices.join("\n")}` : ""}`;
 
-    await this.sendMessage(content);
+    this.sendMessage(content);
   }
 
   private async handleGameOver(): Promise<void> {
@@ -187,17 +180,17 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
       .map((w, idx) => `${medals[idx]} <@${w[0]}> - **${w[1]}** points`)
       .join("\n")}`;
 
-    await this.sendMessage(content);
+    this.sendMessage(content);
     this.activeGame = null;
     this.gameState = null;
   }
 
   private async handleHiScores(): Promise<void> {
     const scores = await this.db.getAllTimeScores();
-    await this.sendMessage(`Hi scores: ${JSON.stringify(scores)}`);
+    this.sendMessage(`Hi scores: ${JSON.stringify(scores)}`);
   }
 
-  private async sendMessage(content: string): Promise<void> {
+  private sendMessage(content: string) {
     hank.sendMessage(
       Message.create({
         content,
@@ -210,7 +203,7 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
     userId: string,
     answer: string,
   ): Promise<void> {
-    await this.sendMessage(`Correct <@${userId}>! The answer was: ${answer}`);
+    this.sendMessage(`Correct <@${userId}>! The answer was: ${answer}`);
   }
 }
 

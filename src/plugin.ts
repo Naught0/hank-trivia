@@ -51,6 +51,7 @@ class TriviaGame {
       if (["self", "me"].some((subcmd) => subcmd === args[0])) {
         return await this.handleScoreByUser(this.message.authorId);
       }
+
       for (const arg of args) {
         if (isMention(arg)) {
           return await this.handleScoreByUser(getIdFromMention(arg));
@@ -132,7 +133,7 @@ class TriviaGame {
       return false;
 
     if (questionType === "boolean") {
-      return guess.toLowerCase() === correctAnswer[0].toLowerCase();
+      return guess.toLowerCase() === correctAnswer.toLowerCase();
     }
     if (questionType === "multiple") {
       const isCorrect = guess.toLowerCase() === correctAnswer[2].toLowerCase();

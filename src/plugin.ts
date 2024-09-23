@@ -10,17 +10,22 @@ class TriviaGame {
   private activeGame: Game | null = null;
   private gameState: GameState | null = null;
   private apiResponse: TriviaResponse | null = null;
+  private currentQuestion: TriviaResult | null = null;
 
   constructor(db: Database, channelId: string) {
     this.db = db;
     this.channelId = channelId;
   }
 
-  async initialize(): Promise<void> {
+  async initCurrentGame(): Promise<void> {
     this.activeGame = await this.db.getActiveGame(this.channelId);
     if (this.activeGame?.is_active) {
       this.gameState = await this.db.getGameState(this.activeGame.id);
-      this.apiResponse = JSON.parse(this.gameState.api_response);
+      this.apiResponse = JSON.parse(
+        this.gameState.api_response,
+      ) as TriviaResponse;
+      this.currentQuestion =
+        this.apiResponse.results[this.gameState.question_index];
     }
   }
 
@@ -102,15 +107,36 @@ class TriviaGame {
     correctAnswer: string,
     questionType: string,
   ): Promise<boolean> {
-    const { levenshteinEditDistance } = await import(
-      "levenshtein-edit-distance"
-    );
-    if (questionType === "multiple") {
-      return guess.toLowerCase() === correctAnswer[2].toLowerCase();
-    } else {
-      const editDistance = levenshteinEditDistance(guess, correctAnswer, true);
-      return editDistance <= 2;
+    if (!this.apiResponse || !this.gameState || !this.currentQuestion)
+      return false;
+
+    if (questionType === "boolean") {
+      return guess.toLowerCase() === correctAnswer[0].toLowerCase();
     }
+    if (questionType === "multiple") {
+      const isCorrect = guess.toLowerCase() === correctAnswer[2].toLowerCase();
+      if (isCorrect) return isCorrect;
+
+      const minAnswerLength = Math.min(
+        ...[
+          this.currentQuestion.incorrect_answers,
+          this.currentQuestion.correct_answer,
+        ].map((a) => a.length),
+      );
+      const maxDistance = getMaxEditDistance(minAnswerLength);
+
+      const { levenshteinEditDistance } = await import(
+        "levenshtein-edit-distance"
+      );
+      const editDistance = levenshteinEditDistance(
+        guess,
+        correctAnswer.slice(7),
+        true,
+      );
+      return editDistance <= maxDistance;
+    }
+
+    return false;
   }
 
   private getChoices(question: TriviaResult): {
@@ -205,6 +231,13 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
 export async function handleMessage(input: HandleMessageInput) {
   const db = new Database(hank);
   const game = new TriviaGame(db, input.message.channelId);
-  await game.initialize();
+  await game.initCurrentGame();
   await game.handleMessage(input.message);
+}
+
+function getMaxEditDistance(minAnswerLength: number) {
+  if (minAnswerLength < 6) return 0;
+  if (minAnswerLength > 12) return 3;
+
+  return 2;
 }

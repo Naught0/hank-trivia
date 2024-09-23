@@ -51,6 +51,11 @@ class TriviaGame {
       if (["self", "me"].some((subcmd) => subcmd === args[0])) {
         return await this.handleScoreByUser(this.message.authorId);
       }
+      for (const arg of args) {
+        if (isMention(arg)) {
+          return await this.handleScoreByUser(getIdFromMention(arg));
+        }
+      }
       return await this.handleHiScores();
     }
 
@@ -270,4 +275,12 @@ function buildWinnersString(winners: UserScore[]) {
         }`,
     )
     .join("\n");
+}
+
+function isMention(msg: string) {
+  return msg.startsWith("<@") && msg.endsWith(">");
+}
+
+function getIdFromMention(msg: string) {
+  return msg.slice(2, -1);
 }

@@ -32,7 +32,10 @@ export class TriviaGame {
       db: this.db,
       message: message,
       args: message.content.split(" ").slice(1),
-      reply: (content: string) => this.sendMessage(content),
+      reply: (content: string) =>
+        hank.sendMessage(
+          Message.create({ content, channelId: this.channelId! }),
+        ),
       activeGame: this.activeGame
         ? {
             game: this.activeGame,
@@ -45,7 +48,8 @@ export class TriviaGame {
   }
 
   async initialize(channelId: string): Promise<void> {
-    this.activeGame = await this.db.getActiveGame(channelId);
+    this.channelId = channelId;
+    this.activeGame = await this.db.getActiveGame(this.channelId);
     if (this.activeGame?.is_active) {
       this.gameState = await this.db.getGameState(this.activeGame.id);
       this.apiResponse = JSON.parse(
@@ -53,7 +57,6 @@ export class TriviaGame {
       ) as TriviaResponse;
       this.currentQuestion =
         this.apiResponse.results[this.gameState.question_index];
-      this.channelId = channelId;
     }
   }
 

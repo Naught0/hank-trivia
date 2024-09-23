@@ -1,7 +1,8 @@
 import { Metadata } from "@hank.chat/types";
 import { hank, HandleCommandInput, HandleMessageInput } from "@hank.chat/pdk";
 import { Database } from "./database";
-import { handleMessage } from "./plugin";
+import { TriviaGame } from "./plugin";
+import { HiScores, StartTrivia, StopTrivia, createCommand } from "./commands";
 
 export * from "@hank.chat/pdk";
 
@@ -17,15 +18,22 @@ hank.registerInitializeFunction(initialize);
 hank.registerMessageHandler(handle_message);
 hank.registerCommandHandler(handle_command);
 
+const db = new Database(hank);
+const game = new TriviaGame(db);
+const commands = [StartTrivia, StopTrivia, HiScores];
+for (const cmd of commands) {
+  game.addCommand(createCommand(cmd, hank, db));
+}
+
 function install() {
-  const db = new Database(hank);
   db.createTables();
 }
 
 function initialize() {}
 
 async function handle_message(input: HandleMessageInput) {
-  await handleMessage(input);
+  await game.initialize(input.message.channelId);
+  await game.handleMessage(input.message);
 }
 
 async function handle_command(input: HandleCommandInput) {

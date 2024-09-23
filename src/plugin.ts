@@ -207,6 +207,8 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
     this.sendMessage(content);
     this.activeGame = null;
     this.gameState = null;
+    this.apiResponse = null;
+    this.currentQuestion = null;
   }
 
   private async handleHiScores(): Promise<void> {

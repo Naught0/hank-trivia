@@ -1,5 +1,5 @@
 import type { hank } from "@hank.chat/pdk";
-import { PreparedStatement, Results } from "@hank.chat/types";
+import { PreparedStatement } from "@hank.chat/types";
 
 type Hank = typeof hank;
 
@@ -35,7 +35,7 @@ export class Database {
       sql: "INSERT INTO trivia_game (channel_id, is_active) VALUES (?, 1) RETURNING *",
       values: [channel_id],
     });
-    return responseFromJson<Game>(await this.hank.dbQuery(stmt))[0];
+    return (await this.hank.dbQuery<Game>(stmt))[0];
   }
 
   public async getActiveGame(channel_id: string) {
@@ -43,8 +43,7 @@ export class Database {
       sql: "SELECT * FROM trivia_game WHERE channel_id = ? AND is_active = 1",
       values: [channel_id],
     });
-    const resp = await this.hank.dbQuery(preparedStatement);
-    const games = responseFromJson<Game>(resp);
+    const games = await this.hank.dbQuery<Game>(preparedStatement);
     if (!games.length) return null;
 
     return games[0];
@@ -76,9 +75,9 @@ export class Database {
         state.question_total.toString(),
       ],
     });
-    const resp = await this.hank.dbQuery(stmt);
+    const resp = await this.hank.dbQuery<GameState>(stmt);
 
-    return responseFromJson<GameState>(resp)[0];
+    return resp[0];
   }
 
   public async updateQuestionIndex(gameId: number, questionIdx: number) {
@@ -86,9 +85,9 @@ export class Database {
       sql: "UPDATE trivia_game_state SET question_index = ? WHERE game_id = ? RETURNING *",
       values: [questionIdx.toString(), gameId.toString()],
     });
-    const resp = await this.hank.dbQuery(stmt);
+    const resp = await this.hank.dbQuery<GameState>(stmt);
 
-    return responseFromJson<GameState>(resp)[0];
+    return resp[0];
   }
 
   public async getGameState(game_id: number) {
@@ -96,8 +95,8 @@ export class Database {
       sql: "SELECT * FROM trivia_game_state WHERE game_id = ?",
       values: [game_id.toString()],
     });
-    const resp = await this.hank.dbQuery(stmt);
-    return responseFromJson<GameState>(resp)[0];
+    const resp = await this.hank.dbQuery<GameState>(stmt);
+    return resp[0];
   }
 
   public async createScore(discord_user_id: string, gameId: number) {
@@ -106,7 +105,7 @@ export class Database {
       values: [discord_user_id, gameId.toString()],
     });
 
-    await this.hank.dbQuery(stmt);
+    await this.hank.dbQuery<GameScore>(stmt);
   }
 
   public async getGameScores(gameId: number) {
@@ -114,21 +113,16 @@ export class Database {
       sql: "SELECT discord_user_id FROM trivia_score WHERE game_id = ?",
       values: [gameId.toString()],
     });
-    const resp = await this.hank.dbQuery(stmt);
-    return responseFromJson<UserScore>(resp);
+    return await this.hank.dbQuery<GameScore>(stmt);
   }
+
   public async getAllTimeScores() {
     const stmt = PreparedStatement.create({
       sql: "SELECT discord_user_id, count(*) AS count FROM trivia_score GROUP BY discord_user_id ORDER BY count DESC",
       values: [],
     });
-    const resp = await this.hank.dbQuery(stmt);
-    return responseFromJson<UserScore>(resp);
+    return await this.hank.dbQuery<UserScore>(stmt);
   }
-}
-
-export function responseFromJson<T>(results: Results) {
-  return results.rows.map((row) => JSON.parse(row) as T);
 }
 
 export interface Game {

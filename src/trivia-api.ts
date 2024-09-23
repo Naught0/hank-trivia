@@ -17,6 +17,10 @@ export function getQuestions({
 }: {
   amount: number;
 }): TriviaResponse {
+  if (amount < 1 || amount > 20) {
+    throw new Error("Amount must be between 1 and 20");
+  }
+
   const response = Http.request({
     method: "GET",
     url: `https://opentdb.com/api.php?amount=${amount}`,

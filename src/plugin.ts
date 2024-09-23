@@ -61,13 +61,16 @@ class TriviaGame {
     }
 
     if (command === "!trivia") {
-      return await this.startGame();
+      const count = args[0] ? parseInt(args[0]) : 10;
+      if (count < 1 || count > 20) {
+        return this.sendMessage("Question count must be between 1 and 20");
+      }
+      return await this.startGame(count);
     }
+
     if (!this.activeGame?.is_active) return;
 
-    if (content.startsWith("!strivia")) {
-      return await this.handleGameOver();
-    }
+    if (content.startsWith("!strivia")) return await this.handleGameOver();
 
     await this.handleGuess();
   }

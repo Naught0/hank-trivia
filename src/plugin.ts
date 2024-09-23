@@ -123,7 +123,7 @@ function sendCorrectMessage({
 }) {
   hank.sendMessage(
     Message.create({
-      content: `Correct <@${userId}>! The answer was ${answer}`,
+      content: `Correct <@${userId}>! The answer was: ${answer}`,
       channelId,
     }),
   );

@@ -9,6 +9,7 @@ class TriviaGame {
   private channelId: string;
   private activeGame: Game | null = null;
   private gameState: GameState | null = null;
+  private apiResponse: TriviaResponse | null = null;
 
   constructor(db: Database, channelId: string) {
     this.db = db;
@@ -19,6 +20,7 @@ class TriviaGame {
     this.activeGame = await this.db.getActiveGame(this.channelId);
     if (this.activeGame?.is_active) {
       this.gameState = await this.db.getGameState(this.activeGame.id);
+      this.apiResponse = JSON.parse(this.gameState.api_response);
     }
   }
 
@@ -77,9 +79,9 @@ class TriviaGame {
 
   private async handleGuess(message: Message): Promise<void> {
     if (!this.gameState) return;
+    if (!this.apiResponse) return;
 
-    const resp: TriviaResponse = JSON.parse(this.gameState.api_response);
-    const question = resp.results[this.gameState.question_index];
+    const question = this.apiResponse.results[this.gameState.question_index];
     const { answerIndex, choices } = this.getChoices(question);
 
     const isCorrect = await this.checkAnswer(
@@ -151,9 +153,9 @@ class TriviaGame {
 
   private async sendQuestion(): Promise<void> {
     if (!this.gameState) return;
+    if (!this.apiResponse) return;
 
-    const question: TriviaResult = JSON.parse(this.gameState.api_response)
-      .results[this.gameState.question_index];
+    const question = this.apiResponse.results[this.gameState.question_index];
     const isMultipleChoice = question.type === "multiple";
     const isTrueOrFalse = question.type === "boolean";
     const { choices } = this.getChoices(question);

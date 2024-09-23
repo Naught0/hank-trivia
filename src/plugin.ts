@@ -4,240 +4,217 @@ import { TriviaResponse, TriviaResult, getQuestions } from "./trivia-api";
 import { HandleMessageInput, hank } from "@hank.chat/pdk";
 import { decode } from "html-entities";
 
-export async function handleMessage(input: HandleMessageInput) {
-  const db = new Database(hank);
-  const { message } = input;
-  const activeGame = await db.getActiveGame(message.channelId);
+class TriviaGame {
+  private db: Database;
+  private channelId: string;
+  private activeGame: Game | null = null;
+  private gameState: GameState | null = null;
 
-  if (
-    ["stats", "stat", "hiscores"].some((cmd) =>
-      message.content.startsWith(`!${cmd}`),
-    )
-  ) {
-    return await handleHiScores(db, message.channelId);
+  constructor(db: Database, channelId: string) {
+    this.db = db;
+    this.channelId = channelId;
   }
 
-  if (message.content.startsWith("!trivia")) {
-    if (activeGame?.is_active) {
-      return hank.sendMessage(
-        Message.create({
-          content: "Game already in progress",
-          channelId: message.channelId,
-        }),
-      );
+  async initialize(): Promise<void> {
+    this.activeGame = await this.db.getActiveGame(this.channelId);
+    if (this.activeGame?.is_active) {
+      this.gameState = await this.db.getGameState(this.activeGame.id);
+    }
+  }
+
+  async handleMessage(message: Message): Promise<void> {
+    const content = message.content.toLowerCase();
+
+    if (
+      ["stats", "stat", "hiscores"].some((cmd) => content.startsWith(`!${cmd}`))
+    ) {
+      await this.handleHiScores();
+      return;
     }
 
-    return await startGame(db, message.channelId);
+    if (content.startsWith("!trivia")) {
+      if (this.activeGame?.is_active) {
+        await this.sendMessage("Game already in progress");
+      } else {
+        await this.startGame();
+      }
+      return;
+    }
+
+    if (!this.activeGame?.is_active) return;
+
+    if (content.startsWith("!strivia")) {
+      await this.handleGameOver();
+      return;
+    }
+
+    await this.handleGuess(message);
   }
-  if (!activeGame?.is_active) return;
 
-  if (message.content.startsWith("!strivia")) {
-    return await handleGameOver(db, message.channelId, activeGame.id);
+  private async startGame(amount: number = 10): Promise<void> {
+    if (this.activeGame?.is_active) {
+      await this.sendMessage("Game already in progress");
+      return;
+    }
+
+    this.activeGame = await this.db.createGame(this.channelId);
+    if (!this.activeGame) {
+      await this.sendMessage("Error creating game");
+      return;
+    }
+
+    const response = getQuestions({ amount });
+    this.gameState = await this.db.initGameState({
+      question_total: amount,
+      question_index: 0,
+      api_response: JSON.stringify(response),
+      game_id: this.activeGame.id,
+    });
+
+    await this.sendMessage("Starting trivia, use !strivia to stop");
+    await this.sendQuestion();
   }
 
-  // Monitor messages here
-  const state = await db.getGameState(activeGame.id);
-  const resp: TriviaResponse = JSON.parse(state.api_response);
-  const question = resp.results[state.question_index];
-  const { answerIndex, choices } = getChoices(question);
+  private async handleGuess(message: Message): Promise<void> {
+    if (!this.gameState) return;
 
-  await handleGuess({
-    db,
-    state,
-    choices,
-    activeGame,
-    answerIndex,
-    guess: message.content,
-    userId: message.authorId,
-    questionType: question.type,
-    questionIndex: state.question_index,
-  });
-}
+    const resp: TriviaResponse = JSON.parse(this.gameState.api_response);
+    const question = resp.results[this.gameState.question_index];
+    const { answerIndex, choices } = this.getChoices(question);
 
-async function handleGuess({
-  activeGame,
-  answerIndex,
-  choices,
-  db,
-  guess,
-  questionIndex,
-  questionType,
-  state,
-  userId,
-}: {
-  activeGame: Game;
-  answerIndex: number;
-  choices: string[];
-  db: Database;
-  guess: string;
-  questionIndex: number;
-  questionType: string;
-  state: GameState;
-  userId: string;
-}) {
-  const { levenshteinEditDistance } = await import("levenshtein-edit-distance");
+    const isCorrect = await this.checkAnswer(
+      message.content,
+      choices[answerIndex],
+      question.type,
+    );
+    if (!isCorrect) return;
 
-  // Wrong answer
-  switch (questionType) {
-    case "multiple":
-      const guessIndex = choices.findIndex(
-        (answer) => answer[2].toLowerCase() === guess.toLowerCase(),
+    await this.db.createScore(message.authorId, this.activeGame!.id);
+    await this.sendCorrectMessage(message.authorId, choices[answerIndex]);
+
+    const nextIdx = this.gameState.question_index + 1;
+    if (nextIdx >= this.gameState.question_total) {
+      await this.handleGameOver();
+    } else {
+      this.gameState = await this.db.updateQuestionIndex(
+        this.activeGame!.id,
+        nextIdx,
       );
-      if (answerIndex !== guessIndex) return;
-      break;
-
-    default:
-      const editDistance = levenshteinEditDistance(
-        guess,
-        choices[answerIndex],
-        true,
-      );
-      if (editDistance > 2) return;
-      break;
+      await this.sendQuestion();
+    }
   }
 
-  const nextIdx = questionIndex + 1;
-  const gameOver = nextIdx >= state.question_total;
+  private async checkAnswer(
+    guess: string,
+    correctAnswer: string,
+    questionType: string,
+  ): Promise<boolean> {
+    const { levenshteinEditDistance } = await import(
+      "levenshtein-edit-distance"
+    );
+    if (questionType === "multiple") {
+      return guess.toLowerCase() === correctAnswer[2].toLowerCase();
+    } else {
+      const editDistance = levenshteinEditDistance(guess, correctAnswer, true);
+      return editDistance <= 2;
+    }
+  }
 
-  await db.createScore(userId, activeGame.id);
-  sendCorrectMessage({
-    userId,
-    answer: choices[answerIndex],
-    channelId: activeGame.channel_id,
-  });
-  if (gameOver)
-    return await handleGameOver(db, activeGame.channel_id, activeGame.id);
+  private getChoices(question: TriviaResult): {
+    choices: string[];
+    answerIndex: number;
+  } {
+    const isMultipleChoice = question.type === "multiple";
+    if (!isMultipleChoice) {
+      return {
+        choices: [question.correct_answer, ...question.incorrect_answers],
+        answerIndex: 0,
+      };
+    }
 
-  const newState = await db.updateQuestionIndex(activeGame.id, nextIdx);
-  sendQuestion(activeGame.channel_id, newState);
-}
+    const alphabet = ["A", "B", "C", "D", "E"];
+    const correctAnswer = decode(question.correct_answer);
+    const decodedAnswers = [
+      ...question.incorrect_answers,
+      question.correct_answer,
+    ].map((c) => decode(c));
+    decodedAnswers.sort();
+    const choices = decodedAnswers.map(
+      (c, idx) => `**${alphabet[idx]}**. ${c}`,
+    );
 
-function sendCorrectMessage({
-  channelId,
-  userId,
-  answer,
-}: {
-  userId: string;
-  answer: string;
-  channelId: string;
-}) {
-  hank.sendMessage(
-    Message.create({
-      content: `Correct <@${userId}>! The answer was: ${answer}`,
-      channelId,
-    }),
-  );
-}
-
-async function hasActiveGame(db: Database, channelId: string) {
-  const game = await db.getActiveGame(channelId);
-  return !!game;
-}
-
-function getChoices(question: TriviaResult) {
-  const isMultipleChoice = question.type === "multiple";
-  if (!isMultipleChoice)
     return {
-      choices: [question.correct_answer, ...question.incorrect_answers],
-      answerIndex: 0,
+      choices,
+      answerIndex: decodedAnswers.findIndex((c) => c === correctAnswer),
     };
+  }
 
-  const alphabet = ["A", "B", "C", "D", "E"];
-  const correctAnswer = decode(question.correct_answer);
-  const decodedAnswers = [
-    ...question.incorrect_answers,
-    question.correct_answer,
-  ].map((c) => decode(c));
-  decodedAnswers.sort();
-  const choices = decodedAnswers.map((c, idx) => `**${alphabet[idx]}**. ${c}`);
+  private async sendQuestion(): Promise<void> {
+    if (!this.gameState) return;
 
-  return {
-    choices,
-    answerIndex: decodedAnswers.findIndex((c) => c === correctAnswer),
-  };
-}
+    const question: TriviaResult = JSON.parse(this.gameState.api_response)
+      .results[this.gameState.question_index];
+    const isMultipleChoice = question.type === "multiple";
+    const isTrueOrFalse = question.type === "boolean";
+    const { choices } = this.getChoices(question);
 
-function sendQuestion(channelId: string, state: GameState) {
-  const question: TriviaResult = JSON.parse(state.api_response).results[
-    state.question_index
-  ];
-  const isMultipleChoice = question.type === "multiple";
-  const isTrueOrFalse = question.type === "boolean";
-  const { choices } = getChoices(question);
+    const content = `**Question ${this.gameState.question_index + 1} / ${this.gameState.question_total}**:
+${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipleChoice ? `\n**Answers**:\n${choices.join("\n")}` : ""}`;
 
-  return hank.sendMessage(
-    Message.create({
-      content: `**Question ${state.question_index + 1} / ${state.question_total}**:
-${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipleChoice ? `\n**Answers**:\n${choices.join("\n")}` : ""}`,
-      channelId,
-    }),
-  );
-}
+    await this.sendMessage(content);
+  }
 
-async function startGame(db: Database, channelId: string, amount = 10) {
-  if (await hasActiveGame(db, channelId))
-    return hank.sendMessage(
-      Message.create({ content: "Game already in progress", channelId }),
+  private async handleGameOver(): Promise<void> {
+    if (!this.activeGame) return;
+
+    await this.db.stopGame(this.activeGame.id);
+    const scores = await this.db.getGameScores(this.activeGame.id);
+    const winnersMap = scores.reduce(
+      (acc, winner) => {
+        acc[winner.discord_user_id] = (acc[winner.discord_user_id] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
     );
+    const winners = Object.entries(winnersMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3);
 
-  const game = await db.createGame(channelId);
-  if (!game)
-    return hank.sendMessage(
-      Message.create({ content: "Error creating game", channelId }),
+    const medals = ["🥇", "🥈", "🥉"];
+    const content = `Game over! The winners are:\n${winners
+      .map((w, idx) => `${medals[idx]} <@${w[0]}> - **${w[1]}** points`)
+      .join("\n")}`;
+
+    await this.sendMessage(content);
+    this.activeGame = null;
+    this.gameState = null;
+  }
+
+  private async handleHiScores(): Promise<void> {
+    const scores = await this.db.getAllTimeScores();
+    await this.sendMessage(`Hi scores: ${JSON.stringify(scores)}`);
+  }
+
+  private async sendMessage(content: string): Promise<void> {
+    hank.sendMessage(
+      Message.create({
+        content,
+        channelId: this.channelId,
+      }),
     );
+  }
 
-  const response = getQuestions({ amount });
-  const state = await db.initGameState({
-    question_total: amount,
-    question_index: 0,
-    api_response: JSON.stringify(response),
-    game_id: game.id,
-  });
-
-  hank.sendMessage(
-    Message.create({
-      content: "Starting trivia, use !strivia to stop",
-      channelId,
-    }),
-  );
-  sendQuestion(channelId, state);
-
-  return response;
+  private async sendCorrectMessage(
+    userId: string,
+    answer: string,
+  ): Promise<void> {
+    await this.sendMessage(`Correct <@${userId}>! The answer was: ${answer}`);
+  }
 }
 
-async function handleGameOver(db: Database, channelId: string, gameId: number) {
-  await db.stopGame(gameId);
-  const scores = await db.getGameScores(gameId);
-  // Find number of ocurrences of each discord_user_id
-  const winnersMap = scores.reduce(
-    (acc, winner) => {
-      acc[winner.discord_user_id] = (acc[winner.discord_user_id] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-  // Get top 3 highest values in winnersMap
-  const winners = Object.entries(winnersMap)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3);
-
-  const medals = ["🥇", "🥈", "🥉"];
-  hank.sendMessage(
-    Message.create({
-      content: `Game over! The winners are:\n${winners
-        .map((w, idx) => `${medals[idx]} <@${w[0]}> - **${w[1]}** points`)
-        .join("\n")}`,
-      channelId,
-    }),
-  );
-}
-
-async function handleHiScores(db: Database, channelId: string) {
-  const scores = await db.getAllTimeScores();
-  hank.sendMessage(
-    Message.create({
-      content: `Hi scores: ${JSON.stringify(scores)}`,
-      channelId,
-    }),
-  );
+export async function handleMessage(input: HandleMessageInput) {
+  const db = new Database(hank);
+  const game = new TriviaGame(db, input.message.channelId);
+  await game.initialize();
+  await game.handleMessage(input.message);
 }

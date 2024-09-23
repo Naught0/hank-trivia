@@ -39,7 +39,7 @@ export async function handleMessage(input: HandleMessageInput) {
   const state = await db.getGameState(activeGame.id);
   const resp: TriviaResponse = JSON.parse(state.api_response);
   const question = resp.results[state.question_index];
-  const { answerIndex, choices } = getMultipleChoiceAnswers(question);
+  const { answerIndex, choices } = getChoices(question);
 
   await handleGuess({
     db,
@@ -134,7 +134,7 @@ async function hasActiveGame(db: Database, channelId: string) {
   return !!game;
 }
 
-function getMultipleChoiceAnswers(question: TriviaResult) {
+function getChoices(question: TriviaResult) {
   const isMultipleChoice = question.type === "multiple";
   if (!isMultipleChoice)
     return {
@@ -157,17 +157,13 @@ function getMultipleChoiceAnswers(question: TriviaResult) {
   };
 }
 
-function parseApiResponse(apiResponse: string): TriviaResponse {
-  return JSON.parse(apiResponse);
-}
-
 function sendQuestion(channelId: string, state: GameState) {
-  const question: TriviaResult = parseApiResponse(state.api_response).results[
+  const question: TriviaResult = JSON.parse(state.api_response).results[
     state.question_index
   ];
   const isMultipleChoice = question.type === "multiple";
   const isTrueOrFalse = question.type === "boolean";
-  const { choices } = getMultipleChoiceAnswers(question);
+  const { choices } = getChoices(question);
 
   return hank.sendMessage(
     Message.create({

@@ -30,8 +30,7 @@ class TriviaGame {
     if (
       ["stats", "stat", "hiscores"].some((cmd) => content.startsWith(`!${cmd}`))
     ) {
-      await this.handleHiScores();
-      return;
+      return await this.handleHiScores();
     }
 
     if (content.startsWith("!trivia")) {
@@ -40,8 +39,7 @@ class TriviaGame {
     if (!this.activeGame?.is_active) return;
 
     if (content.startsWith("!strivia")) {
-      await this.handleGameOver();
-      return;
+      return await this.handleGameOver();
     }
 
     await this.handleGuess(message);
@@ -85,7 +83,7 @@ class TriviaGame {
     if (!isCorrect) return;
 
     await this.db.createScore(message.authorId, this.activeGame!.id);
-    await this.sendCorrectMessage(message.authorId, choices[answerIndex]);
+    this.sendCorrectMessage(message.authorId, choices[answerIndex]);
 
     const nextIdx = this.gameState.question_index + 1;
     if (nextIdx >= this.gameState.question_total) {
@@ -199,10 +197,7 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
     );
   }
 
-  private async sendCorrectMessage(
-    userId: string,
-    answer: string,
-  ): Promise<void> {
+  private sendCorrectMessage(userId: string, answer: string) {
     this.sendMessage(`Correct <@${userId}>! The answer was: ${answer}`);
   }
 }

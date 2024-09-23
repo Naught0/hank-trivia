@@ -110,15 +110,15 @@ export class Database {
 
   public async getGameScores(gameId: number) {
     const stmt = PreparedStatement.create({
-      sql: "SELECT discord_user_id FROM trivia_score WHERE game_id = ?",
+      sql: "SELECT discord_user_id, count(*) as count FROM trivia_score WHERE game_id = ? GROUP BY discord_user_id ORDER BY count DESC LIMIT 3",
       values: [gameId.toString()],
     });
-    return await this.hank.dbQuery<GameScore>(stmt);
+    return await this.hank.dbQuery<UserScore>(stmt);
   }
 
   public async getAllTimeScores() {
     const stmt = PreparedStatement.create({
-      sql: "SELECT discord_user_id, count(*) AS count FROM trivia_score GROUP BY discord_user_id ORDER BY count DESC",
+      sql: "SELECT discord_user_id, count(*) AS count FROM trivia_score GROUP BY discord_user_id ORDER BY count DESC LIMIT 3",
       values: [],
     });
     return await this.hank.dbQuery<UserScore>(stmt);

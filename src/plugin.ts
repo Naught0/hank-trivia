@@ -1,8 +1,15 @@
 import { Message } from "@hank.chat/types";
-import { Database, Game, GameState } from "./database";
+import { Database, Game, GameState, UserScore } from "./database";
 import { TriviaResponse, TriviaResult, getQuestions } from "./trivia-api";
 import { HandleMessageInput, hank } from "@hank.chat/pdk";
 import { decode } from "html-entities";
+
+export async function handleMessage(input: HandleMessageInput) {
+  const db = new Database(hank);
+  const game = new TriviaGame(db, input.message.channelId);
+  await game.initCurrentGame();
+  await game.handleMessage(input.message);
+}
 
 class TriviaGame {
   private db: Database;
@@ -188,23 +195,9 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
 
     await this.db.stopGame(this.activeGame.id);
     const scores = await this.db.getGameScores(this.activeGame.id);
-    const winnersMap = scores.reduce(
-      (acc, winner) => {
-        acc[winner.discord_user_id] = (acc[winner.discord_user_id] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
-    const winners = Object.entries(winnersMap)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 3);
-
-    const medals = ["🥇", "🥈", "🥉"];
-    const content = `Game over! The winners are:\n${winners
-      .map((w, idx) => `${medals[idx]} <@${w[0]}> - **${w[1]}** points`)
-      .join("\n")}`;
-
+    const content = `Game over! The winners are:\n${buildWinnersString(scores)}`;
     this.sendMessage(content);
+
     this.activeGame = null;
     this.gameState = null;
     this.apiResponse = null;
@@ -213,7 +206,9 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
 
   private async handleHiScores(): Promise<void> {
     const scores = await this.db.getAllTimeScores();
-    this.sendMessage(`Hi scores: ${JSON.stringify(scores)}`);
+    this.sendMessage(
+      `**Trivia** - All Time High Scores:\n${buildWinnersString(scores)}`,
+    );
   }
 
   private sendMessage(content: string) {
@@ -226,15 +221,8 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
   }
 
   private sendCorrectMessage(userId: string, answer: string) {
-    this.sendMessage(`Correct <@${userId}>! The answer was: ${answer}`);
+    this.sendMessage(`Correct ${mention(userId)}! The answer was: ${answer}`);
   }
-}
-
-export async function handleMessage(input: HandleMessageInput) {
-  const db = new Database(hank);
-  const game = new TriviaGame(db, input.message.channelId);
-  await game.initCurrentGame();
-  await game.handleMessage(input.message);
 }
 
 function getMaxEditDistance(minAnswerLength: number) {
@@ -242,4 +230,24 @@ function getMaxEditDistance(minAnswerLength: number) {
   if (minAnswerLength > 12) return 3;
 
   return 2;
+}
+
+function mention(id: string) {
+  return `<@${id}>`;
+}
+
+function getMedalByIndex(idx: number) {
+  const medals = ["🥇", "🥈", "🥉"];
+  return medals?.[idx] ?? "";
+}
+
+function buildWinnersString(winners: UserScore[]) {
+  return winners
+    .map(
+      (w, idx) =>
+        `${getMedalByIndex(idx)} ${mention(w.discord_user_id)} - **${w.count}** point${
+          w.count === 1 ? "" : "s"
+        }`,
+    )
+    .join("\n");
 }

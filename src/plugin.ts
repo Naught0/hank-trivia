@@ -166,12 +166,13 @@ function sendQuestion(channelId: string, state: GameState) {
     state.question_index
   ];
   const isMultipleChoice = question.type === "multiple";
+  const isTrueOrFalse = question.type === "boolean";
   const { choices } = getMultipleChoiceAnswers(question);
 
   return hank.sendMessage(
     Message.create({
       content: `**Question ${state.question_index + 1} / ${state.question_total}**:
-${decode(question.question)}${isMultipleChoice ? `\n**Answers**:\n${choices.join("\n")}` : ""}`,
+${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipleChoice ? `\n**Answers**:\n${choices.join("\n")}` : ""}`,
       channelId,
     }),
   );

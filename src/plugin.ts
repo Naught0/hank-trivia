@@ -6,22 +6,24 @@ import { decode } from "html-entities";
 
 export async function handleMessage(input: HandleMessageInput) {
   const db = new Database(hank);
-  const game = new TriviaGame(db, input.message.channelId);
+  const game = new TriviaGame(db, input.message);
   await game.initCurrentGame();
-  await game.handleMessage(input.message);
+  await game.handleMessage();
 }
 
 class TriviaGame {
   private db: Database;
   private channelId: string;
+  private message;
   private activeGame: Game | null = null;
   private gameState: GameState | null = null;
   private apiResponse: TriviaResponse | null = null;
   private currentQuestion: TriviaResult | null = null;
 
-  constructor(db: Database, channelId: string) {
+  constructor(db: Database, message: Message) {
     this.db = db;
-    this.channelId = channelId;
+    this.message = message;
+    this.channelId = message.channelId;
   }
 
   async initCurrentGame(): Promise<void> {
@@ -36,16 +38,23 @@ class TriviaGame {
     }
   }
 
-  async handleMessage(message: Message): Promise<void> {
-    const content = message.content.toLowerCase();
+  async handleMessage(): Promise<void> {
+    const content = this.message.content.toLowerCase();
+    let [command, ...args] = content.split(" ");
+    command = command.toLowerCase();
 
     if (
-      ["stats", "stat", "hiscores"].some((cmd) => content.startsWith(`!${cmd}`))
+      ["stats", "stat", "hiscores", "leaderboard", "scores"].some(
+        (cmd) => `!${cmd}` === command,
+      )
     ) {
+      if (["self", "me"].some((subcmd) => subcmd === args[0])) {
+        return await this.handleScoreByUser(this.message.authorId);
+      }
       return await this.handleHiScores();
     }
 
-    if (content.startsWith("!trivia")) {
+    if (command === "!trivia") {
       return await this.startGame();
     }
     if (!this.activeGame?.is_active) return;
@@ -54,7 +63,7 @@ class TriviaGame {
       return await this.handleGameOver();
     }
 
-    await this.handleGuess(message);
+    await this.handleGuess();
   }
 
   private async startGame(amount: number = 10): Promise<void> {
@@ -80,7 +89,7 @@ class TriviaGame {
     this.sendQuestion();
   }
 
-  private async handleGuess(message: Message): Promise<void> {
+  private async handleGuess(): Promise<void> {
     if (!this.gameState) return;
     if (!this.apiResponse) return;
 
@@ -88,14 +97,14 @@ class TriviaGame {
     const { answerIndex, choices } = this.getChoices(question);
 
     const isCorrect = await this.checkAnswer(
-      message.content,
+      this.message.content,
       choices[answerIndex],
       question.type,
     );
     if (!isCorrect) return;
 
-    await this.db.createScore(message.authorId, this.activeGame!.id);
-    this.sendCorrectMessage(message.authorId, choices[answerIndex]);
+    await this.db.createScore(this.message.authorId, this.activeGame!.id);
+    this.sendCorrectMessage(this.message.authorId, choices[answerIndex]);
 
     const nextIdx = this.gameState.question_index + 1;
     if (nextIdx >= this.gameState.question_total) {
@@ -208,6 +217,17 @@ ${isTrueOrFalse ? "True or False: " : ""}${decode(question.question)}${isMultipl
     const scores = await this.db.getAllTimeScores();
     this.sendMessage(
       `**Trivia** - All Time High Scores:\n${buildWinnersString(scores)}`,
+    );
+  }
+
+  public async handleScoreByUser(userId: string) {
+    const score = await this.db.getScoreByUserId(userId);
+    if (!score) {
+      return this.sendMessage(`${mention(userId)} has no points! Sad!`);
+    }
+
+    this.sendMessage(
+      `Total points for ${mention(userId)}: ${score.count} point${score.count > 1 ? "s" : ""}`,
     );
   }
 

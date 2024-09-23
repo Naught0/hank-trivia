@@ -116,6 +116,16 @@ export class Database {
     return await this.hank.dbQuery<UserScore>(stmt);
   }
 
+  public async getScoreByUserId(userId: string) {
+    const stmt = PreparedStatement.create({
+      sql: "SELECT discord_user_id, count(*) as count FROM trivia_score WHERE discord_user_id = ? GROUP BY discord_user_id",
+      values: [userId],
+    });
+    const res = await this.hank.dbQuery<UserScore | null>(stmt);
+
+    return res[0];
+  }
+
   public async getAllTimeScores() {
     const stmt = PreparedStatement.create({
       sql: "SELECT discord_user_id, count(*) AS count FROM trivia_score GROUP BY discord_user_id ORDER BY count DESC LIMIT 3",

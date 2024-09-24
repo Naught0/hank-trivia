@@ -1,8 +1,14 @@
+import { HandleCommandInput, HandleMessageInput, hank } from "@hank.chat/pdk";
 import { Metadata } from "@hank.chat/types";
-import { hank, HandleCommandInput, HandleMessageInput } from "@hank.chat/pdk";
+import {
+  HiScores,
+  OnMessage,
+  StartTrivia,
+  StopTrivia,
+  createCommand,
+} from "./commands";
 import { Database } from "./database";
-import { TriviaGame } from "./plugin";
-import { HiScores, StartTrivia, StopTrivia, createCommand } from "./commands";
+import { TriviaClient } from "./plugin";
 
 export * from "@hank.chat/pdk";
 
@@ -19,21 +25,26 @@ hank.registerMessageHandler(handle_message);
 hank.registerCommandHandler(handle_command);
 
 const db = new Database(hank);
-const game = new TriviaGame(db);
+const trivia = new TriviaClient(db);
 const commands = [StartTrivia, StopTrivia, HiScores];
 for (const cmd of commands) {
-  game.addCommand(createCommand(cmd, hank, db));
+  trivia.addCommand(createCommand(cmd, hank, db));
 }
 
-function install() {
-  db.createTables();
+const messageHandlers = [OnMessage];
+for (const handler of messageHandlers) {
+  trivia.addMessageHandler(createCommand(handler, hank, db));
+}
+
+async function install() {
+  await db.createTables();
 }
 
 function initialize() {}
 
 async function handle_message(input: HandleMessageInput) {
-  await game.initialize(input.message.channelId);
-  await game.handleMessage(input.message);
+  await trivia.initialize(input.message.channelId);
+  await trivia.handleMessage(input.message);
 }
 
 async function handle_command(input: HandleCommandInput) {

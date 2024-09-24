@@ -1,7 +1,8 @@
 import type { hank } from "@hank.chat/pdk";
-import type { Database, Game } from "./database";
 import type { Message } from "@hank.chat/types";
 import { Command } from "./commands";
+import type { Database, Game, GameState } from "./database";
+import { TriviaResult } from "./trivia-api";
 
 export type HankPDK = typeof hank;
 
@@ -11,12 +12,14 @@ export interface CommandConstructor {
 
 export interface ICommand {
   public commandNames: string[];
-  execute(ctx: Context, args: string[]): Promise<void>;
+  execute(ctx: Context): Promise<void>;
 }
+
 
 export interface Context {
   db: Database;
   message: Message;
+  command: string;
   args: string[];
   reply(content: string): void;
   activeGame: {

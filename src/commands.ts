@@ -1,22 +1,23 @@
 import { Database } from "./database";
-import { getQuestions } from "./trivia-api";
+import { TriviaResult, getQuestions } from "./trivia-api";
 import { ICommand, Context, HankPDK, CommandConstructor } from "./types";
 import {
   buildQuestionString,
   buildWinnersString,
+  getChoices,
   getIdFromMention,
+  getMaxEditDistance,
   isMention,
   mention,
 } from "./util";
 
-export abstract class Command implements ICommand {
-  public abstract commandNames: string[];
+export class Command implements ICommand {
+  public commandNames: string[] = [];
   constructor(
     protected hank: HankPDK,
     protected db: Database,
   ) {}
-
-  async execute(ctx: Context): Promise<void> {}
+  async execute(ctx: Context) {}
 }
 
 export class StartTrivia extends Command {
@@ -75,18 +76,92 @@ export class HiScores extends Command {
         ? getIdFromMention(ctx.args[0])
         : null;
 
-    let content = "no content was set";
     if (userId) {
       const score = await ctx.db.getScoreByUserId(userId);
       if (!score) return ctx.reply(`${mention(userId)} has no points! Sad!`);
 
-      content = `Total points for ${mention(userId)}: ${score.count} point${score.count > 1 ? "s" : ""}`;
+      return ctx.reply(
+        `Total points for ${mention(userId)}: ${score.count} point${score.count > 1 ? "s" : ""}`,
+      );
     } else {
       const scores = await ctx.db.getAllTimeScores();
-      content = `**Trivia** - All Time High Scores:\n${buildWinnersString(scores)}`;
+      return ctx.reply(
+        `**Trivia** - All Time High Scores:\n${buildWinnersString(scores)}`,
+      );
+    }
+  }
+}
+
+export class OnMessage extends Command {
+  commandNames = [];
+
+  async execute(ctx: Context): Promise<void> {
+    if (!ctx.activeGame?.game.is_active) return;
+
+    const { answerIndex, choices } = getChoices(ctx.activeGame.currentQuestion);
+    const isCorrect = await this.checkAnswer(
+      ctx.message.content,
+      choices[answerIndex],
+      ctx.activeGame.currentQuestion,
+    );
+    if (!isCorrect) return;
+
+    await this.db.createScore(ctx.message.authorId, ctx.activeGame.game.id);
+    ctx.reply(
+      `Correct ${mention(ctx.message.authorId)}! The answer was: ${choices[answerIndex]}`,
+    );
+    await this.nextRound(ctx);
+  }
+
+  private async nextRound(ctx: Context) {
+    if (!ctx.activeGame) throw Error("Cannot  without active game.");
+
+    const nextIdx = ctx.activeGame.gameState.question_index + 1;
+    console.log("Next IDX", nextIdx);
+    if (nextIdx >= ctx.activeGame.gameState.question_total) {
+      const stopTriviaCmd = new StopTrivia(this.hank, this.db);
+      await stopTriviaCmd.execute(ctx);
+    } else {
+      const newGameState = await this.db.updateQuestionIndex(
+        ctx.activeGame.game.id,
+        nextIdx,
+      );
+      ctx.reply(buildQuestionString(newGameState, ctx.activeGame.response));
+    }
+  }
+
+  private async checkAnswer(
+    guess: string,
+    correctAnswer: string,
+    question: TriviaResult,
+  ): Promise<boolean> {
+    const questionType = question.type;
+    if (questionType === "boolean") {
+      return guess.toLowerCase() === correctAnswer.toLowerCase();
+    }
+    if (questionType === "multiple") {
+      const isCorrect = guess.toLowerCase() === correctAnswer[2].toLowerCase();
+      if (isCorrect) return isCorrect;
+
+      const minAnswerLength = Math.min(
+        ...[question.incorrect_answers, question.correct_answer].map(
+          (a) => a.length,
+        ),
+      );
+      const maxDistance = getMaxEditDistance(minAnswerLength);
+
+      const { levenshteinEditDistance } = await import(
+        "levenshtein-edit-distance"
+      );
+      const editDistance = levenshteinEditDistance(
+        guess,
+        correctAnswer.slice(7),
+        true,
+      );
+      return editDistance <= maxDistance;
     }
 
-    ctx.reply(content);
+    return false;
   }
 }
 

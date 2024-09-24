@@ -17,7 +17,7 @@ export class Command implements ICommand {
     protected hank: HankPDK,
     protected db: Database,
   ) {}
-  async execute(ctx: Context) {}
+  async execute(_: Context) {}
 }
 
 export class StartTrivia extends Command {
@@ -117,7 +117,6 @@ export class OnMessage extends Command {
     if (!ctx.activeGame) throw Error("Cannot  without active game.");
 
     const nextIdx = ctx.activeGame.gameState.question_index + 1;
-    console.log("Next IDX", nextIdx);
     if (nextIdx >= ctx.activeGame.gameState.question_total) {
       const stopTriviaCmd = new StopTrivia(this.hank, this.db);
       await stopTriviaCmd.execute(ctx);
@@ -127,7 +126,27 @@ export class OnMessage extends Command {
         nextIdx,
       );
       ctx.reply(buildQuestionString(newGameState, ctx.activeGame.response));
+
+      // TODO: See why this isn't called
+      this.hank.oneShot(5, () => this.timeExpired(ctx));
     }
+  }
+
+  private async timeExpired(ctx: Context) {
+    console.log("Executing oneshot");
+    if (!ctx.activeGame) return;
+
+    const currentGame = await this.db.getActiveGame(ctx.message.channelId);
+    if (!currentGame) return;
+
+    const currentState = await this.db.getGameState(currentGame.id);
+    if (currentState.question_index > ctx.activeGame.gameState.question_index)
+      return;
+
+    ctx.reply(
+      `**Time's up!** The answer was: ${ctx.activeGame.currentQuestion.correct_answer}`,
+    );
+    await this.nextRound(ctx);
   }
 
   private async checkAnswer(

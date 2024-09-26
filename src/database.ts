@@ -1,5 +1,6 @@
 import type { hank } from "@hank.chat/pdk";
 import { PreparedStatement } from "@hank.chat/types";
+import { validTimeout } from "./validate";
 
 type Hank = typeof hank;
 
@@ -21,10 +22,14 @@ export class Database {
     const createScoresTable = PreparedStatement.create({
       sql: "CREATE TABLE IF NOT EXISTS trivia_score (id INTEGER PRIMARY KEY AUTOINCREMENT, discord_user_id TEXT, game_id INTEGER)",
     });
+    const createConfigTable = PreparedStatement.create({
+      sql: "CREATE TABLE IF NOT EXISTS trivia_config (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, key TEXT, value TEXT)",
+    });
     for (const preparedStatement of [
       createGameTable,
       createGameStateTable,
       createScoresTable,
+      createConfigTable,
     ]) {
       await this.hank.dbQuery(preparedStatement);
     }
@@ -36,6 +41,39 @@ export class Database {
       values: [channel_id],
     });
     return (await this.hank.dbQuery<Game>(stmt))[0];
+  }
+
+  public async getConfigValue(channel_id: string, key: TriviaConfigKey) {
+    const stmt = PreparedStatement.create({
+      sql: "SELECT value FROM trivia_config WHERE channel_id = ? AND key = ?",
+      values: [channel_id, key],
+    });
+    const result = await this.hank.dbQuery<{ value: string }>(stmt);
+    if (result.length === 0) return null;
+
+    return result[0].value;
+  }
+
+  public async setRoundTimeout(channel_id: string, timeout: number) {
+    if (!validTimeout(timeout))
+      throw new Error("Timeout must be between 0 and 60 seconds");
+
+    const stmt = PreparedStatement.create({
+      sql: `UPDATE trivia_config SET key = ${TriviaConfigKey.RoundTimeout}, value = ? WHERE channel_id = ?`,
+      values: [timeout.toString(), channel_id],
+    });
+    await this.hank.dbQuery(stmt);
+  }
+
+  public async setDefaultQuestionCount(channel_id: string, count: number) {
+    if (count < 1 || count > 20)
+      throw new Error("Number of questions must be between 1 and 20");
+
+    const stmt = PreparedStatement.create({
+      sql: `UPDATE trivia_config SET key = '${TriviaConfigKey.QuestionTotal}', value = ? WHERE channel_id = ?`,
+      values: [count.toString(), channel_id],
+    });
+    await this.hank.dbQuery(stmt);
   }
 
   public async getActiveGame(channel_id: string) {
@@ -133,6 +171,11 @@ export class Database {
     });
     return await this.hank.dbQuery<UserScore>(stmt);
   }
+}
+
+export enum TriviaConfigKey {
+  RoundTimeout = "round_timeout",
+  QuestionTotal = "question_total",
 }
 
 export interface Game {

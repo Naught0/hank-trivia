@@ -37,7 +37,9 @@ export function buildWinnersString(winners: UserScore[]) {
     .join("\n");
 }
 
-export function isMention(msg: string) {
+export function isMention(msg?: string) {
+  if (!msg) return false;
+
   return msg.startsWith("<@") && msg.endsWith(">");
 }
 

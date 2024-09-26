@@ -13,7 +13,7 @@ import { TriviaClient } from "./plugin";
 export * from "@hank.chat/pdk";
 
 hank.pluginMetadata = Metadata.create({
-  name: "hank-trivia",
+  name: "trivia",
   description: "do trivia with your friends that you definitely have",
   version: "0.1.0",
   database: true,
@@ -40,7 +40,9 @@ async function install() {
   await db.createTables();
 }
 
-function initialize() {}
+function initialize() {
+  console.log("Initializing trivia");
+}
 
 async function handle_message(input: HandleMessageInput) {
   await trivia.initialize(input.message.channelId);

@@ -1,6 +1,9 @@
+import { Message } from "@hank.chat/types";
 import { decode } from "html-entities";
-import { GameState, UserScore } from "./database";
+import { Database, Game, GameState, UserScore } from "./database";
+import { defaultConfig } from "./defaults";
 import { TriviaResponse, TriviaResult } from "./trivia-api";
+import { Context, HankConfig, HankPDK } from "./types";
 
 export function buildQuestionString(
   gameState: GameState,
@@ -78,5 +81,73 @@ export function getChoices(question: TriviaResult): {
   return {
     choices,
     answerIndex: decodedAnswers.findIndex((c) => c === correctAnswer),
+  };
+}
+
+export async function fetchContext(
+  hank: HankPDK,
+  db: Database,
+  message: Message,
+): Promise<Context> {
+  const activeGame = await db.getActiveGame(message.channelId);
+
+  const config = await db.getConfig(message.channelId);
+  if (activeGame) {
+    const gameState = await db.getGameState(activeGame.id);
+    const apiResponse = JSON.parse(gameState.api_response) as TriviaResponse;
+    const currentQuestion = apiResponse.results[gameState.question_index];
+    return createContext(
+      hank,
+      db,
+      message,
+      config ?? defaultConfig,
+      activeGame,
+      gameState,
+      apiResponse,
+      currentQuestion,
+    );
+  }
+  return createContext(
+    hank,
+    db,
+    message,
+    config ?? defaultConfig,
+    null,
+    null,
+    null,
+    null,
+  );
+}
+
+export function createContext(
+  hank: HankPDK,
+  db: Database,
+  message: Message,
+  config: HankConfig,
+  game: Game | null,
+  gameState: GameState | null,
+  response: TriviaResponse | null,
+  currentQuestion: TriviaResult | null,
+): Context {
+  const [command, ...args] = message.content.split(" ");
+  const activeGame = game?.is_active
+    ? {
+        game,
+        gameState: gameState!,
+        response: response!,
+        currentQuestion: currentQuestion!,
+      }
+    : null;
+  return {
+    db,
+    config,
+    message,
+    command,
+    args,
+    reply: (content: string) =>
+      hank.sendMessage(
+        Message.create({ content, channelId: message.channelId }),
+      ),
+    activeGame,
   };
 }

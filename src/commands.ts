@@ -4,6 +4,8 @@ import { ICommand, Context, HankPDK, CommandConstructor } from "./types";
 import {
   buildQuestionString,
   buildWinnersString,
+  createContext,
+  fetchContext,
   getChoices,
   getIdFromMention,
   getMaxEditDistance,
@@ -30,14 +32,14 @@ export class StartTrivia extends Command {
       return ctx.reply("Game already in progress");
     }
 
-    const newGame = await this.db.createGame(ctx.message.channelId);
+    const newGame = await ctx.db.createGame(ctx.message.channelId);
     if (!newGame) {
       return ctx.reply("Error creating game");
     }
 
     try {
       const response = getQuestions({
-        amount: ctx.args[0] ? parseInt(ctx.args[0]) : 10,
+        amount: parseInt(ctx.args[0] ?? ctx.config.question_total),
       });
       const gameState = await this.db.initGameState({
         question_total: response.results.length,
@@ -47,7 +49,19 @@ export class StartTrivia extends Command {
       });
 
       ctx.reply("Starting trivia, use !strivia to stop");
-      ctx.reply(buildQuestionString(gameState, response));
+      return startRound(
+        this.hank,
+        createContext(
+          this.hank,
+          this.db,
+          ctx.message,
+          ctx.config,
+          newGame,
+          gameState,
+          response,
+          response.results[gameState.question_index],
+        ),
+      );
     } catch (error) {
       return ctx.reply("Number of questions must be between 1 and 20");
     }
@@ -144,12 +158,6 @@ export class OnMessage extends Command {
   async execute(ctx: Context): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
 
-    const timeout =
-      (await ctx.db.getConfigValue(
-        ctx.message.channelId,
-        TriviaConfigKey.RoundTimeout,
-      )) || this.default_timeout;
-
     const { answerIndex, choices } = getChoices(ctx.activeGame.currentQuestion);
     const isCorrect = await this.checkAnswer(
       ctx.message.content,
@@ -158,47 +166,11 @@ export class OnMessage extends Command {
     );
     if (!isCorrect) return;
 
-    await this.db.createScore(ctx.message.authorId, ctx.activeGame.game.id);
+    await ctx.db.createScore(ctx.message.authorId, ctx.activeGame.game.id);
     ctx.reply(
       `Correct ${mention(ctx.message.authorId)}! The answer was: ${choices[answerIndex]}`,
     );
-    await this.nextRound(ctx);
-  }
-
-  private async nextRound(ctx: Context) {
-    if (!ctx.activeGame) return;
-
-    const nextIdx = ctx.activeGame.gameState.question_index + 1;
-    if (nextIdx >= ctx.activeGame.gameState.question_total) {
-      const stopTriviaCmd = new StopTrivia(this.hank, this.db);
-      await stopTriviaCmd.execute(ctx);
-    } else {
-      const newGameState = await this.db.updateQuestionIndex(
-        ctx.activeGame.game.id,
-        nextIdx,
-      );
-      ctx.reply(buildQuestionString(newGameState, ctx.activeGame.response));
-
-      ctx.activeGame.gameState.question_index += 1;
-      const timeExpired = () => this.timeExpired(ctx);
-      this.hank.oneShot(5, timeExpired);
-    }
-  }
-
-  private async timeExpired(ctx: Context) {
-    if (!ctx.activeGame) return;
-
-    const currentGame = await this.db.getActiveGame(ctx.message.channelId);
-    if (!currentGame) return;
-
-    const currentState = await this.db.getGameState(currentGame.id);
-    if (currentState.question_index !== ctx.activeGame.gameState.question_index)
-      return;
-
-    ctx.reply(
-      `**Time's up!** The answer was: ${ctx.activeGame.currentQuestion.correct_answer}`,
-    );
-    await this.nextRound(ctx);
+    await nextRound(this.hank, ctx);
   }
 
   private async checkAnswer(
@@ -230,6 +202,56 @@ export class OnMessage extends Command {
     }
 
     return false;
+  }
+}
+
+async function queueExpiredRoundCheck(
+  hank: HankPDK,
+  ctx: Context,
+  timeout: number = 15,
+) {
+  if (!ctx.activeGame) return;
+
+  hank.oneShot(timeout, () => timeExpired(hank, ctx));
+}
+
+async function timeExpired(hank: HankPDK, ctx: Context) {
+  if (!ctx.activeGame) return;
+
+  const currentGame = await ctx.db.getActiveGame(ctx.message.channelId);
+  if (!currentGame) return;
+
+  const currentState = await ctx.db.getGameState(currentGame.id);
+  if (currentState.question_index !== ctx.activeGame.gameState.question_index)
+    return;
+
+  ctx.reply(
+    `**Time's up!** The answer was: ${ctx.activeGame.currentQuestion.correct_answer}`,
+  );
+  await nextRound(hank, ctx);
+}
+
+async function startRound(hank: HankPDK, ctx: Context) {
+  if (!ctx.activeGame)
+    return console.log("Context contains no active game. Cannot start round");
+
+  ctx.reply(
+    buildQuestionString(ctx.activeGame.gameState, ctx.activeGame.response),
+  );
+  queueExpiredRoundCheck(hank, ctx);
+}
+
+async function nextRound(hank: HankPDK, ctx: Context) {
+  if (!ctx.activeGame) return;
+
+  const nextIdx = ctx.activeGame.gameState.question_index + 1;
+  if (nextIdx >= ctx.activeGame.gameState.question_total) {
+    const stopTriviaCmd = new StopTrivia(hank, ctx.db);
+    await stopTriviaCmd.execute(ctx);
+  } else {
+    await ctx.db.updateQuestionIndex(ctx.activeGame.game.id, nextIdx);
+    const newCtx = await fetchContext(hank, ctx.db, ctx.message);
+    startRound(hank, newCtx);
   }
 }
 

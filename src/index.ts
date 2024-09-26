@@ -3,6 +3,8 @@ import { Metadata } from "@hank.chat/types";
 import {
   HiScores,
   OnMessage,
+  SetDefaultQuestionCount,
+  SetDefaultTimeout,
   StartTrivia,
   StopTrivia,
   createCommand,
@@ -26,7 +28,13 @@ hank.registerCommandHandler(handle_command);
 
 const db = new Database(hank);
 const trivia = new TriviaClient(db);
-const commands = [StartTrivia, StopTrivia, HiScores];
+const commands = [
+  StartTrivia,
+  StopTrivia,
+  HiScores,
+  SetDefaultTimeout,
+  SetDefaultQuestionCount,
+];
 for (const cmd of commands) {
   trivia.addCommand(createCommand(cmd, hank, db));
 }
@@ -45,7 +53,6 @@ function initialize() {
 }
 
 async function handle_message(input: HandleMessageInput) {
-  await trivia.initialize(input.message.channelId);
   await trivia.handleMessage(input.message);
 }
 

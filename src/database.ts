@@ -43,15 +43,23 @@ export class Database {
     return (await this.hank.dbQuery<Game>(stmt))[0];
   }
 
-  public async getConfigValue(channel_id: string, key: TriviaConfigKey) {
+  public async getConfig(channel_id: string) {
     const stmt = PreparedStatement.create({
-      sql: "SELECT value FROM trivia_config WHERE channel_id = ? AND key = ?",
-      values: [channel_id, key],
+      sql: "SELECT key, value FROM trivia_config WHERE channel_id = ?",
+      values: [channel_id],
     });
-    const result = await this.hank.dbQuery<{ value: string }>(stmt);
+    const result = await this.hank.dbQuery<{ key: string; value: string }>(
+      stmt,
+    );
     if (result.length === 0) return null;
 
-    return result[0].value;
+    return result.reduce(
+      (acc, cur) => {
+        acc[cur.key as TriviaConfigKey] = cur.value;
+        return acc;
+      },
+      {} as Record<TriviaConfigKey, string>,
+    );
   }
 
   public async setRoundTimeout(channel_id: string, timeout: number) {
@@ -59,7 +67,7 @@ export class Database {
       throw new Error("Timeout must be between 0 and 60 seconds");
 
     const stmt = PreparedStatement.create({
-      sql: `UPDATE trivia_config SET key = ${TriviaConfigKey.RoundTimeout}, value = ? WHERE channel_id = ?`,
+      sql: `UPDATE trivia_config SET key = "${TriviaConfigKey.RoundTimeout}", value = ? WHERE channel_id = ?`,
       values: [timeout.toString(), channel_id],
     });
     await this.hank.dbQuery(stmt);
@@ -70,7 +78,7 @@ export class Database {
       throw new Error("Number of questions must be between 1 and 20");
 
     const stmt = PreparedStatement.create({
-      sql: `UPDATE trivia_config SET key = '${TriviaConfigKey.QuestionTotal}', value = ? WHERE channel_id = ?`,
+      sql: `UPDATE trivia_config SET key = "${TriviaConfigKey.QuestionTotal}", value = ? WHERE channel_id = ?`,
       values: [count.toString(), channel_id],
     });
     await this.hank.dbQuery(stmt);
@@ -176,6 +184,13 @@ export class Database {
 export enum TriviaConfigKey {
   RoundTimeout = "round_timeout",
   QuestionTotal = "question_total",
+}
+
+export interface Config {
+  id: number;
+  channel_id: string;
+  key: TriviaConfigKey;
+  value: string;
 }
 
 export interface Game {

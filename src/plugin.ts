@@ -1,16 +1,10 @@
 import { Message } from "@hank.chat/types";
-import { Database, Game, GameState } from "./database";
-import { TriviaResponse, TriviaResult } from "./trivia-api";
+import { Database } from "./database";
 import { hank } from "@hank.chat/pdk";
-import { Context } from "./types";
 import { Command } from "./commands";
+import { fetchContext } from "./util";
 
 export class TriviaClient {
-  private activeGame: Game | null = null;
-  private gameState: GameState | null = null;
-  private apiResponse: TriviaResponse | null = null;
-  private currentQuestion: TriviaResult | null = null;
-  private channelId: string | null = null;
   private commands: Command[] = [];
   private onMessageHandlers: Command[] = [];
   public prefix = "!";
@@ -24,45 +18,10 @@ export class TriviaClient {
     this.onMessageHandlers.push(handler);
   }
 
-  private createContext(message: Message): Context {
-    const [command, ...args] = message.content.split(" ");
-    return {
-      db: this.db,
-      message,
-      command,
-      args,
-      reply: (content: string) =>
-        hank.sendMessage(
-          Message.create({ content, channelId: this.channelId! }),
-        ),
-      activeGame: this.activeGame
-        ? {
-            game: this.activeGame,
-            gameState: this.gameState!,
-            response: this.apiResponse!,
-            currentQuestion: this.currentQuestion!,
-          }
-        : null,
-    };
-  }
-
-  async initialize(channelId: string): Promise<void> {
-    this.channelId = channelId;
-    this.activeGame = await this.db.getActiveGame(this.channelId);
-    if (this.activeGame?.is_active) {
-      this.gameState = await this.db.getGameState(this.activeGame.id);
-      this.apiResponse = JSON.parse(
-        this.gameState.api_response,
-      ) as TriviaResponse;
-      this.currentQuestion =
-        this.apiResponse.results[this.gameState.question_index];
-    }
-  }
-
   async handleMessage(message: Message): Promise<void> {
     const content = message.content.toLowerCase();
     const command = content.split(" ")[0].toLowerCase();
-    const context = this.createContext(message);
+    const ctx = await fetchContext(hank, this.db, message);
 
     for (const cmd of this.commands) {
       if (
@@ -70,12 +29,12 @@ export class TriviaClient {
           (cmd) => `${this.prefix}${cmd}` === command.toLowerCase(),
         )
       ) {
-        return await cmd.execute(context);
+        return await cmd.execute(ctx);
       }
     }
 
     for (const handler of this.onMessageHandlers) {
-      await handler.execute(context);
+      await handler.execute(ctx);
     }
   }
 }

@@ -8,6 +8,7 @@ import { StartTrivia } from "./commands/start";
 import { StopTrivia } from "./commands/stop";
 import { Database } from "./database";
 import { TriviaClient } from "./client";
+import { Help } from "./commands/help";
 
 export * from "@hank.chat/pdk";
 
@@ -31,6 +32,7 @@ const commands = [
   HiScores,
   SetDefaultTimeout,
   SetDefaultQuestionCount,
+  Help,
 ];
 for (const cmd of commands) {
   trivia.addCommand(createCommand(cmd, hank, db));

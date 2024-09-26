@@ -4,7 +4,7 @@ import { Command } from "./base";
 
 export class StopTrivia extends Command {
   commandNames = ["strivia", "stop"];
-  help = "Stop the current trivia game.\nUsage: `!stop`";
+  help = `Stop the current trivia game.\nUsage: (${this.commandNames.join("|")})`;
   async execute(ctx: Context): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
     if (!ctx.activeGame) return;

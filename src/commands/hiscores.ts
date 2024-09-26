@@ -9,7 +9,8 @@ import { Command } from "./base";
 
 export class HiScores extends Command {
   commandNames = ["stats", "stat", "scores", "score"];
-  help = `View the high scores for the channel, or for a user.\nUsage: \`!(${this.commandNames.join("|")}) <optional_user>\``;
+  help = `View the high scores for the channel, or for a user.\nUsage: (${this.commandNames.join("|")}) <optional_user>`;
+
   async execute(ctx: Context): Promise<void> {
     const isSelf = ctx.args[0] === "self" || ctx.args[0] === "me";
     const hasMention = isMention(ctx.args[0]);

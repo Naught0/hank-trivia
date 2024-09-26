@@ -5,7 +5,7 @@ import { Command } from "./base";
 
 export class StartTrivia extends Command {
   commandNames = ["trivia"];
-  help = `Start a new trivia game.\nUsage: \`!${this.commandNames.join("|")} <optional number of questions>\``;
+  help = `Start a new trivia game.\nUsage: ${this.commandNames.join("|")} <optional number of questions>`;
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.activeGame?.game.is_active) {
@@ -33,7 +33,7 @@ export class StartTrivia extends Command {
         this.hank,
         createContext(
           this.hank,
-          this.db,
+          ctx.client,
           ctx.message,
           ctx.config,
           newGame,

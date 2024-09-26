@@ -3,6 +3,7 @@ import { ICommand, Context, HankPDK, CommandConstructor } from "../types";
 
 export class Command implements ICommand {
   public commandNames: string[] = [];
+  public help?: string | null;
   constructor(
     protected hank: HankPDK,
     protected db: Database,

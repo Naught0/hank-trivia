@@ -9,7 +9,7 @@ export class TriviaClient {
   onMessageHandlers: Command[] = [];
   public prefix = "!";
 
-  constructor(private db: Database) {}
+  constructor(public db: Database) {}
 
   addCommand(cmd: Command) {
     this.commands.push(cmd);
@@ -21,7 +21,7 @@ export class TriviaClient {
   async handleMessage(message: Message): Promise<void> {
     const content = message.content.toLowerCase();
     const command = content.split(" ")[0].toLowerCase();
-    const ctx = await fetchContext(hank, this.db, message);
+    const ctx = await fetchContext(hank, this, message);
 
     for (const cmd of this.commands) {
       if (

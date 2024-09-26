@@ -1,10 +1,11 @@
 import { Message } from "@hank.chat/types";
 import { decode } from "html-entities";
-import { Database, Game, GameState, UserScore } from "./database";
+import { Game, GameState, UserScore } from "./database";
 import { defaultConfig } from "./defaults";
 import { TriviaResponse, TriviaResult } from "./trivia-api";
 import { Context, HankConfig, HankPDK } from "./types";
 import { StopTrivia } from "./commands/stop";
+import { TriviaClient } from "./client";
 
 export function buildQuestionString(
   gameState: GameState,
@@ -87,19 +88,19 @@ export function getChoices(question: TriviaResult): {
 
 export async function fetchContext(
   hank: HankPDK,
-  db: Database,
+  client: TriviaClient,
   message: Message,
 ): Promise<Context> {
-  const activeGame = await db.getActiveGame(message.channelId);
+  const activeGame = await client.db.getActiveGame(message.channelId);
 
-  const config = await db.getConfig(message.channelId);
+  const config = await client.db.getConfig(message.channelId);
   if (activeGame) {
-    const gameState = await db.getGameState(activeGame.id);
+    const gameState = await client.db.getGameState(activeGame.id);
     const apiResponse = JSON.parse(gameState.api_response) as TriviaResponse;
     const currentQuestion = apiResponse.results[gameState.question_index];
     return createContext(
       hank,
-      db,
+      client,
       message,
       config ?? defaultConfig,
       activeGame,
@@ -110,7 +111,7 @@ export async function fetchContext(
   }
   return createContext(
     hank,
-    db,
+    client,
     message,
     config ?? defaultConfig,
     null,
@@ -122,7 +123,7 @@ export async function fetchContext(
 
 export function createContext(
   hank: HankPDK,
-  db: Database,
+  client: TriviaClient,
   message: Message,
   config: HankConfig,
   game: Game | null,
@@ -140,7 +141,8 @@ export function createContext(
       }
     : null;
   return {
-    db,
+    client,
+    db: client.db,
     config,
     message,
     command,
@@ -166,10 +168,10 @@ export async function queueExpiredRoundCheck(
 export async function onTimeExpired(hank: HankPDK, ctx: Context) {
   if (!ctx.activeGame) return;
 
-  const currentGame = await ctx.db.getActiveGame(ctx.message.channelId);
+  const currentGame = await ctx.client.db.getActiveGame(ctx.message.channelId);
   if (!currentGame) return;
 
-  const currentState = await ctx.db.getGameState(currentGame.id);
+  const currentState = await ctx.client.db.getGameState(currentGame.id);
   if (currentState.question_index !== ctx.activeGame.gameState.question_index)
     return;
 
@@ -194,11 +196,11 @@ export async function nextRound(hank: HankPDK, ctx: Context) {
 
   const nextIdx = ctx.activeGame.gameState.question_index + 1;
   if (nextIdx >= ctx.activeGame.gameState.question_total) {
-    const stopTriviaCmd = new StopTrivia(hank, ctx.db);
+    const stopTriviaCmd = new StopTrivia(hank, ctx.client.db);
     await stopTriviaCmd.execute(ctx);
   } else {
-    await ctx.db.updateQuestionIndex(ctx.activeGame.game.id, nextIdx);
-    const newCtx = await fetchContext(hank, ctx.db, ctx.message);
+    await ctx.client.db.updateQuestionIndex(ctx.activeGame.game.id, nextIdx);
+    const newCtx = await fetchContext(hank, ctx.client, ctx.message);
     startRound(hank, newCtx);
   }
 }

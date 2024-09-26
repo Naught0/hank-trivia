@@ -4,7 +4,7 @@ import { Command } from "./base";
 
 export class SetDefaultTimeout extends Command {
   commandNames = ["timeout", "roundlen"];
-  help = `Set the default round length.\nUsage: \`!(${this.commandNames.join("|")}) <seconds>\``;
+  help = `Set the default round length (10 - 60 seconds).\nUsage: (${this.commandNames.join("|")}) <seconds>`;
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {
@@ -22,7 +22,7 @@ export class SetDefaultTimeout extends Command {
 
 export class SetDefaultQuestionCount extends Command {
   commandNames = ["count", "total"];
-  help = `Set the default number of questions.\nUsage: \`!${this.commandNames[0]} <number>\`\nAliases: \`!${this.commandNames.join(", ")}\``;
+  help = `Set the default number of questions (1 - 20).\nUsage: (${this.commandNames.join("|")}) <number>`;
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {

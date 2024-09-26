@@ -3,6 +3,7 @@ import type { Message } from "@hank.chat/types";
 import { Command } from "./commands";
 import type { Config, Database, Game, GameState, TriviaConfigKey } from "./database";
 import { TriviaResult } from "./trivia-api";
+import { TriviaClient } from "./client";
 
 export type HankPDK = typeof hank;
 
@@ -17,8 +18,9 @@ export interface ICommand {
 
 
 export interface Context {
-  db: Database;
   config: HankConfig;
+  client: TriviaClient;
+  db: Database;
   message: Message;
   command: string;
   args: string[];

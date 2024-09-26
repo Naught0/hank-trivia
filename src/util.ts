@@ -4,7 +4,7 @@ import { Database, Game, GameState, UserScore } from "./database";
 import { defaultConfig } from "./defaults";
 import { TriviaResponse, TriviaResult } from "./trivia-api";
 import { Context, HankConfig, HankPDK } from "./types";
-import { StopTrivia } from "./commands/base";
+import { StopTrivia } from "./commands/stop";
 
 export function buildQuestionString(
   gameState: GameState,

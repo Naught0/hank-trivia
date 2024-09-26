@@ -1,12 +1,12 @@
 import { Message } from "@hank.chat/types";
 import { Database } from "./database";
 import { hank } from "@hank.chat/pdk";
-import { Command } from "./commands";
 import { fetchContext } from "./util";
+import { Command } from "./commands/base";
 
 export class TriviaClient {
-  private commands: Command[] = [];
-  private onMessageHandlers: Command[] = [];
+  commands: Command[] = [];
+  onMessageHandlers: Command[] = [];
   public prefix = "!";
 
   constructor(private db: Database) {}

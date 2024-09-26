@@ -7,7 +7,7 @@ import { OnMessage } from "./commands/on-message";
 import { StartTrivia } from "./commands/start";
 import { StopTrivia } from "./commands/stop";
 import { Database } from "./database";
-import { TriviaClient } from "./plugin";
+import { TriviaClient } from "./client";
 
 export * from "@hank.chat/pdk";
 

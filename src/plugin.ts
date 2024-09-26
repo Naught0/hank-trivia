@@ -65,7 +65,11 @@ export class TriviaClient {
     const context = this.createContext(message);
 
     for (const cmd of this.commands) {
-      if (cmd.commandNames.some((cmd) => `${this.prefix}${cmd}` === command)) {
+      if (
+        cmd.commandNames.some(
+          (cmd) => `${this.prefix}${cmd}` === command.toLowerCase(),
+        )
+      ) {
         return await cmd.execute(context);
       }
     }

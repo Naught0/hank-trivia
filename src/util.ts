@@ -4,6 +4,7 @@ import { Database, Game, GameState, UserScore } from "./database";
 import { defaultConfig } from "./defaults";
 import { TriviaResponse, TriviaResult } from "./trivia-api";
 import { Context, HankConfig, HankPDK } from "./types";
+import { StopTrivia } from "./commands/base";
 
 export function buildQuestionString(
   gameState: GameState,
@@ -150,4 +151,54 @@ export function createContext(
       ),
     activeGame,
   };
+}
+
+export async function queueExpiredRoundCheck(
+  hank: HankPDK,
+  ctx: Context,
+  timeout: number = 15,
+) {
+  if (!ctx.activeGame) return;
+
+  hank.oneShot(timeout, () => onTimeExpired(hank, ctx));
+}
+
+export async function onTimeExpired(hank: HankPDK, ctx: Context) {
+  if (!ctx.activeGame) return;
+
+  const currentGame = await ctx.db.getActiveGame(ctx.message.channelId);
+  if (!currentGame) return;
+
+  const currentState = await ctx.db.getGameState(currentGame.id);
+  if (currentState.question_index !== ctx.activeGame.gameState.question_index)
+    return;
+
+  ctx.reply(
+    `**Time's up!** The answer was: ${ctx.activeGame.currentQuestion.correct_answer}`,
+  );
+  await nextRound(hank, ctx);
+}
+
+export async function startRound(hank: HankPDK, ctx: Context) {
+  if (!ctx.activeGame)
+    return console.log("Context contains no active game. Cannot start round");
+
+  ctx.reply(
+    buildQuestionString(ctx.activeGame.gameState, ctx.activeGame.response),
+  );
+  queueExpiredRoundCheck(hank, ctx);
+}
+
+export async function nextRound(hank: HankPDK, ctx: Context) {
+  if (!ctx.activeGame) return;
+
+  const nextIdx = ctx.activeGame.gameState.question_index + 1;
+  if (nextIdx >= ctx.activeGame.gameState.question_total) {
+    const stopTriviaCmd = new StopTrivia(hank, ctx.db);
+    await stopTriviaCmd.execute(ctx);
+  } else {
+    await ctx.db.updateQuestionIndex(ctx.activeGame.game.id, nextIdx);
+    const newCtx = await fetchContext(hank, ctx.db, ctx.message);
+    startRound(hank, newCtx);
+  }
 }

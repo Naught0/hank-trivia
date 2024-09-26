@@ -1,4 +1,4 @@
-import { Database } from "./database";
+import { Database, TriviaConfigKey } from "./database";
 import { TriviaResult, getQuestions } from "./trivia-api";
 import { ICommand, Context, HankPDK, CommandConstructor } from "./types";
 import {
@@ -10,6 +10,8 @@ import {
   isMention,
   mention,
 } from "./util";
+import { validTimeout } from "./validate";
+import { levenshteinEditDistance } from "levenshtein-edit-distance";
 
 export class Command implements ICommand {
   public commandNames: string[] = [];
@@ -65,6 +67,49 @@ export class StopTrivia extends Command {
   }
 }
 
+export class SetDefaultTimeout extends Command {
+  commandNames = ["timeout", "roundlen"];
+  help = "Set the default round length.\nUsage: `!timeout <seconds>`";
+
+  async execute(ctx: Context): Promise<void> {
+    if (ctx.args.length < 1) {
+      return ctx.reply(this.help);
+    }
+    const timeout = parseInt(ctx.args[0]);
+    if (!validTimeout(timeout)) {
+      return ctx.reply("Timeout must be between 10 and 60 seconds");
+    }
+
+    await ctx.db.setRoundTimeout(ctx.message.channelId, timeout);
+    this.hank.react({ message: ctx.message, emoji: "✅" });
+  }
+}
+
+export class SetDefaultQuestionCount extends Command {
+  commandNames = ["count", "total"];
+  help = `Set the default number of questions.\nUsage: \`!${this.commandNames[0]} <number>\`\nAliases: \`!${this.commandNames.join(", ")}\``;
+
+  async execute(ctx: Context): Promise<void> {
+    if (ctx.args.length < 1) {
+      return ctx.reply(this.help);
+    }
+
+    const count = parseInt(ctx.args[0]);
+    if (count < 1 || count > 20) {
+      return ctx.reply("Number of questions must be between 1 and 20");
+    }
+
+    try {
+      await ctx.db.setDefaultQuestionCount(ctx.message.channelId, count);
+    } catch (error) {
+      error;
+      return;
+    }
+
+    this.hank.react({ message: ctx.message, emoji: "✅" });
+  }
+}
+
 export class HiScores extends Command {
   commandNames = ["hiscores", "leaderboard", "scores", "stats", "stat"];
   async execute(ctx: Context): Promise<void> {
@@ -94,9 +139,16 @@ export class HiScores extends Command {
 
 export class OnMessage extends Command {
   commandNames = [];
+  default_timeout = 20;
 
   async execute(ctx: Context): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
+
+    const timeout =
+      (await ctx.db.getConfigValue(
+        ctx.message.channelId,
+        TriviaConfigKey.RoundTimeout,
+      )) || this.default_timeout;
 
     const { answerIndex, choices } = getChoices(ctx.activeGame.currentQuestion);
     const isCorrect = await this.checkAnswer(
@@ -114,7 +166,7 @@ export class OnMessage extends Command {
   }
 
   private async nextRound(ctx: Context) {
-    if (!ctx.activeGame) throw Error("Cannot  without active game.");
+    if (!ctx.activeGame) return;
 
     const nextIdx = ctx.activeGame.gameState.question_index + 1;
     if (nextIdx >= ctx.activeGame.gameState.question_total) {
@@ -127,20 +179,20 @@ export class OnMessage extends Command {
       );
       ctx.reply(buildQuestionString(newGameState, ctx.activeGame.response));
 
-      // TODO: See why this isn't called
-      this.hank.oneShot(5, () => this.timeExpired(ctx));
+      ctx.activeGame.gameState.question_index += 1;
+      const timeExpired = () => this.timeExpired(ctx);
+      this.hank.oneShot(5, timeExpired);
     }
   }
 
   private async timeExpired(ctx: Context) {
-    console.log("Executing oneshot");
     if (!ctx.activeGame) return;
 
     const currentGame = await this.db.getActiveGame(ctx.message.channelId);
     if (!currentGame) return;
 
     const currentState = await this.db.getGameState(currentGame.id);
-    if (currentState.question_index > ctx.activeGame.gameState.question_index)
+    if (currentState.question_index !== ctx.activeGame.gameState.question_index)
       return;
 
     ctx.reply(
@@ -169,9 +221,6 @@ export class OnMessage extends Command {
       );
       const maxDistance = getMaxEditDistance(minAnswerLength);
 
-      const { levenshteinEditDistance } = await import(
-        "levenshtein-edit-distance"
-      );
       const editDistance = levenshteinEditDistance(
         guess,
         correctAnswer.slice(7),

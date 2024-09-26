@@ -116,8 +116,7 @@ export class SetDefaultQuestionCount extends Command {
     try {
       await ctx.db.setDefaultQuestionCount(ctx.message.channelId, count);
     } catch (error) {
-      error;
-      return;
+      return ctx.reply((error as Error).message);
     }
 
     this.hank.react({ message: ctx.message, emoji: "✅" });

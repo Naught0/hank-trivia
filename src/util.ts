@@ -49,7 +49,7 @@ export function isMention(msg?: string) {
 }
 
 export function getIdFromMention(msg: string) {
-  return msg.slice(2, -1);
+  return msg.replace(/^<@|>$/g, "");
 }
 
 export function getMaxEditDistance(minAnswerLength: number) {

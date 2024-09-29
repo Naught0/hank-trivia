@@ -1,5 +1,9 @@
-import { HandleCommandInput, HandleMessageInput, hank } from "@hank.chat/pdk";
-import { Metadata } from "@hank.chat/types";
+import {
+  HandleCommandInput,
+  HandleMessageInput,
+  PluginMetadata,
+  hank,
+} from "@hank.chat/pdk";
 import { createCommand } from "./commands/base";
 import { SetDefaultQuestionCount, SetDefaultTimeout } from "./commands/config";
 import { HiScores } from "./commands/hiscores";
@@ -12,18 +16,18 @@ import { Help } from "./commands/help";
 
 export * from "@hank.chat/pdk";
 
-hank.pluginMetadata = Metadata.create({
-  name: "trivia",
-  description: "do trivia with your friends that you definitely have",
-  version: "0.1.0",
-  database: true,
-});
-
-hank.registerInstallFunction(install);
-hank.registerInitializeFunction(initialize);
-hank.registerMessageHandler(handle_message);
-hank.registerCommandHandler(handle_command);
-
+export function plugin() {
+  hank.pluginMetadata = PluginMetadata.create({
+    name: "trivia",
+    description: "do trivia with your friends that you definitely have",
+    version: "0.1.0",
+    database: true,
+  });
+  hank.registerInstallFunction(install);
+  hank.registerInitializeFunction(initialize);
+  hank.registerMessageHandler(handle_message);
+  hank.registerCommandHandler(handle_command);
+}
 const db = new Database(hank);
 const trivia = new TriviaClient(db);
 const commands = [

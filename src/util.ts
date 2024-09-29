@@ -204,3 +204,6 @@ export async function nextRound(hank: HankPDK, ctx: Context) {
     startRound(hank, newCtx);
   }
 }
+
+export const jsonLog = (...objs: object[]) =>
+  console.log(objs.map((obj) => JSON.stringify(obj, null, 2)).join("\n"));

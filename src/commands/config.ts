@@ -14,9 +14,11 @@ export class SetDefaultTimeout extends Command {
       return ctx.reply(this.help);
     }
     const timeout = parseInt(ctx.args[0]);
-    if (!validTimeout(timeout)) {
+    if (isNaN(timeout))
+      return this.hank.react({ message: ctx.message, emoji: "❌" });
+
+    if (!validTimeout(timeout))
       return ctx.reply("Timeout must be between 10 and 60 seconds");
-    }
 
     await ctx.db.setRoundTimeout(ctx.message.channelId, timeout);
     this.hank.react({ message: ctx.message, emoji: "✅" });
@@ -37,20 +39,14 @@ export class SetDefaultQuestionCount extends Command {
     }
 
     const count = parseInt(ctx.args[0]);
-    if (isNaN(count)) {
-      return ctx.reply("Number of questions must be a number");
-    }
-
-    if (count < 1 || count > 20) {
-      return ctx.reply("Number of questions must be between 1 and 20");
-    }
+    if (isNaN(count))
+      return this.hank.react({ message: ctx.message, emoji: "❌" });
 
     try {
       await ctx.db.setDefaultQuestionCount(ctx.message.channelId, count);
     } catch (error) {
       return ctx.reply((error as Error).message);
     }
-
     this.hank.react({ message: ctx.message, emoji: "✅" });
   }
 }

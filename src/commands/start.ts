@@ -10,14 +10,11 @@ export class StartTrivia extends Command {
   ]);
 
   async execute(ctx: Context): Promise<void> {
-    if (ctx.activeGame?.game.is_active) {
-      return ctx.reply("Game already in progress");
-    }
+    if (ctx.activeGame?.game.is_active)
+      return this.hank.react({ message: ctx.message, emoji: "❌" });
 
     const newGame = await ctx.db.createGame(ctx.message.channelId);
-    if (!newGame) {
-      return ctx.reply("Error creating game");
-    }
+    if (!newGame) return this.hank.react({ message: ctx.message, emoji: "❌" });
 
     try {
       const response = getQuestions({

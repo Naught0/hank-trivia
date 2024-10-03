@@ -11,6 +11,9 @@ export class StopTrivia extends Command {
 
     await ctx.db.stopGame(ctx.activeGame.game.id);
     const scores = await ctx.db.getGameScores(ctx.activeGame.game.id);
+    if (!scores.length)
+      return this.hank.react({ message: ctx.message, emoji: "✅" });
+
     const content = `Game over! The winners are:\n${buildWinnersString(scores)}`;
     ctx.reply(content);
   }

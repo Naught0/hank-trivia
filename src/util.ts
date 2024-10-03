@@ -207,3 +207,13 @@ export async function nextRound(hank: HankPDK, ctx: Context) {
 
 export const jsonLog = (...objs: object[]) =>
   console.log(objs.map((obj) => JSON.stringify(obj, null, 2)).join("\n"));
+
+export const createHelpText = (
+  commands: string[],
+  summary: string,
+  args?: string[],
+) => {
+  const hasAliases = commands.length > 1;
+
+  return `${summary}\nUsage:\n\t${hasAliases ? "(" : ""}${commands.join("|")}${hasAliases ? ") " : ""} ${args && args.length ? args.map((a) => `<${a}>`).join(" ") : ""}`;
+};

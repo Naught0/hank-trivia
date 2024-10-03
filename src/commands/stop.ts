@@ -7,7 +7,6 @@ export class StopTrivia extends Command {
   help = createHelpText(this.commandNames, "Stop the current trivia game.");
   async execute(ctx: Context): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
-    if (!ctx.activeGame) return;
 
     await ctx.db.stopGame(ctx.activeGame.game.id);
     const scores = await ctx.db.getGameScores(ctx.activeGame.game.id);

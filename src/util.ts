@@ -168,8 +168,11 @@ export async function queueExpiredRoundCheck(
 export async function onTimeExpired(hank: HankPDK, ctx: Context) {
   if (!ctx.activeGame) return;
 
+  const previousId = ctx.activeGame.game.id;
   const currentGame = await ctx.client.db.getActiveGame(ctx.message.channelId);
   if (!currentGame) return;
+  // New game started
+  if (currentGame.id !== previousId) return;
 
   const currentState = await ctx.client.db.getGameState(currentGame.id);
   if (currentState.question_index !== ctx.activeGame.gameState.question_index)

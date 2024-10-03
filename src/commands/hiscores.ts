@@ -4,12 +4,15 @@ import {
   getIdFromMention,
   mention,
   buildWinnersString,
+  createHelpText,
 } from "../util";
 import { Command } from "./base";
 
 export class HiScores extends Command {
   commandNames = ["stats", "stat", "scores", "score"];
-  help = `View the high scores for the channel, or for a user.\nUsage: (${this.commandNames.join("|")}) <optional_user>`;
+  help = createHelpText(this.commandNames, "View the high scores.", [
+    "user (optional)",
+  ]);
 
   async execute(ctx: Context): Promise<void> {
     const isSelf = ctx.args[0] === "self" || ctx.args[0] === "me";

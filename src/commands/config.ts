@@ -1,10 +1,13 @@
 import { Context } from "../types";
+import { createHelpText } from "../util";
 import { validTimeout } from "../validate";
 import { Command } from "./base";
 
 export class SetDefaultTimeout extends Command {
   commandNames = ["timeout", "roundlen"];
-  help = `Set the default round length (10 - 60 seconds).\nUsage: (${this.commandNames.join("|")}) <seconds>`;
+  help = createHelpText(this.commandNames, "Set the default round length.", [
+    "seconds",
+  ]);
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {
@@ -22,7 +25,11 @@ export class SetDefaultTimeout extends Command {
 
 export class SetDefaultQuestionCount extends Command {
   commandNames = ["count", "total"];
-  help = `Set the default number of questions (1 - 20).\nUsage: (${this.commandNames.join("|")}) <number>`;
+  help = createHelpText(
+    this.commandNames,
+    "Set the default number of questions.",
+    ["number"],
+  );
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {
@@ -30,6 +37,10 @@ export class SetDefaultQuestionCount extends Command {
     }
 
     const count = parseInt(ctx.args[0]);
+    if (isNaN(count)) {
+      return ctx.reply("Number of questions must be a number");
+    }
+
     if (count < 1 || count > 20) {
       return ctx.reply("Number of questions must be between 1 and 20");
     }

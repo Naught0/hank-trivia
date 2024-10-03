@@ -1,10 +1,13 @@
 import { codeBlock } from "../markdown";
 import { Context } from "../types";
+import { createHelpText } from "../util";
 import { Command } from "./base";
 
 export class Help extends Command {
   commandNames = ["help", "h"];
-  help = `Get help with the bot.\nUsage: (${this.commandNames.join("|")}) <optional command>`;
+  help = createHelpText(this.commandNames, "Get help with the bot.", [
+    "command (optional)",
+  ]);
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length) {
       const command = ctx.args[0];
@@ -19,10 +22,7 @@ export class Help extends Command {
 
     const commands = ctx.client.commands
       .filter((c) => c.help)
-      .map(
-        (cmd) =>
-          `${cmd.commandNames[0]} - ${cmd.help?.split("\n").join("\n\t")}`,
-      )
+      .map((cmd) => `${cmd.commandNames[0]} - ${cmd.help}`)
       .join("\n\n");
     return ctx.reply(`\`\`\`Available commands:\n\n${commands}\`\`\``);
   }

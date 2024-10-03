@@ -1,10 +1,10 @@
 import { Context } from "../types";
-import { buildWinnersString } from "../util";
+import { buildWinnersString, createHelpText } from "../util";
 import { Command } from "./base";
 
 export class StopTrivia extends Command {
   commandNames = ["strivia", "stop"];
-  help = `Stop the current trivia game.\nUsage: (${this.commandNames.join("|")})`;
+  help = createHelpText(this.commandNames, "Stop the current trivia game.");
   async execute(ctx: Context): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
     if (!ctx.activeGame) return;

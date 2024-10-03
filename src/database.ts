@@ -13,17 +13,17 @@ export class Database {
 
   public async createTables() {
     const createGameTable = PreparedStatement.create({
-      sql: "CREATE TABLE IF NOT EXISTS trivia_game (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, is_active INTEGER)",
+      sql: "CREATE TABLE IF NOT EXISTS trivia_game (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, is_active INTEGER, created_at timestamp DEFAULT current_timestamp)",
     });
     // Rows are deleted after game is finished
     const createGameStateTable = PreparedStatement.create({
       sql: "CREATE TABLE IF NOT EXISTS trivia_game_state (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, api_response TEXT, question_index INTEGER, question_total INTEGER)",
     });
     const createScoresTable = PreparedStatement.create({
-      sql: "CREATE TABLE IF NOT EXISTS trivia_score (id INTEGER PRIMARY KEY AUTOINCREMENT, discord_user_id TEXT, game_id INTEGER)",
+      sql: "CREATE TABLE IF NOT EXISTS trivia_score (id INTEGER PRIMARY KEY AUTOINCREMENT, discord_user_id TEXT, game_id INTEGER, created_at timestamp DEFAULT current_timestamp)",
     });
     const createConfigTable = PreparedStatement.create({
-      sql: "CREATE TABLE IF NOT EXISTS trivia_config (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, key TEXT, value TEXT)",
+      sql: "CREATE TABLE IF NOT EXISTS trivia_config (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, key TEXT, value TEXT, UNIQUE (channel_id, key))",
     });
     for (const preparedStatement of [
       createGameTable,
@@ -67,7 +67,7 @@ export class Database {
       throw new Error("Timeout must be between 0 and 60 seconds");
 
     const stmt = PreparedStatement.create({
-      sql: `UPDATE trivia_config SET key = "${TriviaConfigKey.RoundTimeout}", value = ? WHERE channel_id = ?`,
+      sql: `REPLACE INTO trivia_config (key, value, channel_id) VALUES ("${TriviaConfigKey.RoundTimeout}", ?, ?)`,
       values: [timeout.toString(), channel_id],
     });
     await this.hank.dbQuery(stmt);
@@ -78,7 +78,7 @@ export class Database {
       throw new Error("Number of questions must be between 1 and 20");
 
     const stmt = PreparedStatement.create({
-      sql: `UPDATE trivia_config SET key = "${TriviaConfigKey.QuestionTotal}", value = ? WHERE channel_id = ?`,
+      sql: `REPLACE INTO trivia_config (key, value, channel_id) VALUES ("${TriviaConfigKey.QuestionTotal}", ?, ?)`,
       values: [count.toString(), channel_id],
     });
     await this.hank.dbQuery(stmt);
@@ -89,7 +89,7 @@ export class Database {
       sql: "SELECT * FROM trivia_game WHERE channel_id = ? AND is_active = 1",
       values: [channel_id],
     });
-    const games = await this.hank.dbQuery<Game>(preparedStatement);
+    const games = await this.hank.dbQuery<DBGame>(preparedStatement);
     if (!games.length) return null;
 
     return games[0];
@@ -151,7 +151,7 @@ export class Database {
       values: [discord_user_id, gameId.toString()],
     });
 
-    await this.hank.dbQuery<GameScore>(stmt);
+    await this.hank.dbQuery<DBGameScore>(stmt);
   }
 
   public async getGameScores(gameId: number) {
@@ -199,6 +199,10 @@ export interface Game {
   is_active: boolean;
 }
 
+export interface DBGame extends Game {
+  created_at: string;
+}
+
 export interface GameState {
   id: number;
   game_id: number;
@@ -211,6 +215,10 @@ export interface GameScore {
   id: number;
   discord_user_id: string;
   game_id: number;
+}
+
+export interface DBGameScore extends GameScore {
+  created_at: string;
 }
 
 export interface UserScore {

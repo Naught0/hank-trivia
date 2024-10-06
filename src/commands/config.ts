@@ -5,7 +5,7 @@ import { BaseCommand } from "./base";
 export class SetDefaultTimeout extends BaseCommand {
   commandNames = ["timeout", "roundlen"];
   description = "Set the default round length.";
-  args = ["number"];
+  args = [{ name: "seconds", description: "", required: true }];
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {
@@ -25,7 +25,7 @@ export class SetDefaultTimeout extends BaseCommand {
 
 export class SetDefaultQuestionCount extends BaseCommand {
   commandNames = ["count", "total"];
-  args = ["number"];
+  args = [{ name: "questions", description: "# of questions", required: true }];
   description = "Set the default number of questions.";
 
   async execute(ctx: Context): Promise<void> {

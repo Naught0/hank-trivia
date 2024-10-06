@@ -6,7 +6,9 @@ import { BaseCommand } from "./base";
 export class StartTrivia extends BaseCommand implements ICommand {
   commandNames = ["trivia"];
   description = "Start a new trivia game.";
-  args = ["# of questions (optional)"];
+  args = [
+    { name: "amount", description: "number of questions", required: false },
+  ];
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.activeGame?.game.is_active)

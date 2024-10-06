@@ -10,7 +10,7 @@ import { BaseCommand } from "./base";
 export class HiScores extends BaseCommand {
   commandNames = ["stats", "stat", "scores", "score"];
   description = "View the high scores.";
-  args = ["user (optional)"];
+  args = [{ name: "user", description: "", required: false }];
 
   async execute(ctx: Context): Promise<void> {
     const isSelf = ctx.args[0] === "self" || ctx.args[0] === "me";

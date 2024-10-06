@@ -4,6 +4,7 @@ import {
   CommandContext,
   Message,
   Argument,
+  Metadata,
 } from "@hank.chat/types";
 import { createCommand } from "./commands/base";
 import { SetDefaultQuestionCount, SetDefaultTimeout } from "./commands/config";
@@ -38,22 +39,24 @@ for (const handler of messageHandlers) {
 }
 
 export function plugin() {
-  hank.pluginMetadata = PluginMetadata.create({
+  hank.pluginMetadata = {
+    ...Metadata.create(),
+    author: "naught",
     name: "trivia",
     description: "do trivia with your friends that you definitely have",
     version: "0.1.0",
     database: true,
     handlesCommands: true,
+    handlesMessages: true,
     allowedHosts: ["*"],
-    subcommands: commands.map((c) =>
-      PDKCommand.create({
-        name: c.commandNames[0],
-        description: c.description,
-        arguments: c.args?.map((arg) => Argument.create({ description: arg })),
-        aliases: c.commandNames.slice(1),
-      }),
-    ),
-  });
+    subcommands: commands.map((c) => ({
+      name: c.commandNames[0],
+      description: c.description,
+      arguments: c.args ?? [],
+      subcommands: [],
+      aliases: c.commandNames.slice(1),
+    })),
+  };
   hank.registerInstallFunction(install);
   hank.registerInitializeFunction(initialize);
   hank.registerMessageHandler(handle_message);

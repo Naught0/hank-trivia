@@ -5,7 +5,7 @@ import { BaseCommand } from "./base";
 export class Help extends BaseCommand {
   commandNames = ["help", "h"];
   description = "Get help with commands.";
-  args = ["command (optional)"];
+  args = [{ name: "command", description: "command name", required: false }];
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length) {

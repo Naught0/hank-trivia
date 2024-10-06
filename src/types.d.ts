@@ -1,9 +1,9 @@
 import type { hank } from "@hank.chat/pdk";
-import type { Message } from "@hank.chat/types";
+import type { Argument, Message } from "@hank.chat/types";
+import { TriviaClient } from "./client";
 import { Command } from "./commands";
 import type { Config, Database, Game, GameState, TriviaConfigKey } from "./database";
 import { TriviaResult } from "./trivia-api";
-import { TriviaClient } from "./client";
 
 export type HankPDK = typeof hank;
 
@@ -15,7 +15,7 @@ export interface ICommand {
   public commandNames: string[];
   public help?: string;
   public description?: string;
-  public args?: string[];
+  public args?: Argument[];
   execute(ctx: Context): Promise<void>;
 }
 

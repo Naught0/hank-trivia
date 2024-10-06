@@ -1,11 +1,5 @@
-import { HandleMessageInput, PluginMetadata, hank } from "@hank.chat/pdk";
-import {
-  Command as PDKCommand,
-  CommandContext,
-  Message,
-  Argument,
-  Metadata,
-} from "@hank.chat/types";
+import { HandleMessageInput, hank } from "@hank.chat/pdk";
+import { CommandContext, Message, Metadata } from "@hank.chat/types";
 import { createCommand } from "./commands/base";
 import { SetDefaultQuestionCount, SetDefaultTimeout } from "./commands/config";
 import { HiScores } from "./commands/hiscores";

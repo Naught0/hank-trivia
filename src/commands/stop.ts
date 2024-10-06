@@ -1,10 +1,11 @@
-import { Context } from "../types";
-import { buildWinnersString, createHelpText } from "../util";
-import { Command } from "./base";
+import { Context, ICommand } from "../types";
+import { buildWinnersString } from "../util";
+import { BaseCommand } from "./base";
 
-export class StopTrivia extends Command {
+export class StopTrivia extends BaseCommand implements ICommand {
   commandNames = ["strivia", "stop"];
-  help = createHelpText(this.commandNames, "Stop the current trivia game.");
+  description = "Stop the current trivia game.";
+
   async execute(ctx: Context): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
 

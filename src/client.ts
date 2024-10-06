@@ -1,38 +1,35 @@
-import { Message } from "@hank.chat/types";
-import { Database } from "./database";
 import { hank } from "@hank.chat/pdk";
+import { CommandContext, Message } from "@hank.chat/types";
+import { Database } from "./database";
+import { ICommand } from "./types";
 import { fetchContext } from "./util";
-import { Command } from "./commands/base";
 
 export class TriviaClient {
-  commands: Command[] = [];
-  onMessageHandlers: Command[] = [];
+  commands: ICommand[] = [];
+  onMessageHandlers: ICommand[] = [];
   public prefix = "!";
 
   constructor(public db: Database) {}
 
-  addCommand(cmd: Command) {
+  addCommand(cmd: ICommand) {
     this.commands.push(cmd);
   }
-  addMessageHandler(handler: Command) {
+  addMessageHandler(handler: ICommand) {
     this.onMessageHandlers.push(handler);
   }
 
-  async handleMessage(message: Message): Promise<void> {
-    const content = message.content.toLowerCase();
-    const command = content.split(" ")[0].toLowerCase();
+  async handleCommand(hankCtx: CommandContext, message: Message) {
+    const cmd = this.commands.find((cmd) =>
+      cmd.commandNames.includes(hankCtx.name),
+    );
+    if (!cmd) return;
+
     const ctx = await fetchContext(hank, this, message);
+    await cmd.execute(ctx);
+  }
 
-    for (const cmd of this.commands) {
-      if (
-        cmd.commandNames.some(
-          (cmd) => `${this.prefix}${cmd}` === command.toLowerCase(),
-        )
-      ) {
-        return await cmd.execute(ctx);
-      }
-    }
-
+  async handleMessage(message: Message): Promise<void> {
+    const ctx = await fetchContext(hank, this, message);
     for (const handler of this.onMessageHandlers) {
       await handler.execute(ctx);
     }

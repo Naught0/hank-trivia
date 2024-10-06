@@ -13,6 +13,9 @@ export interface CommandConstructor {
 
 export interface ICommand {
   public commandNames: string[];
+  public help?: string;
+  public description?: string;
+  public args?: string[];
   execute(ctx: Context): Promise<void>;
 }
 

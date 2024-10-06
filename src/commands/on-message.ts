@@ -2,9 +2,9 @@ import { levenshteinEditDistance } from "levenshtein-edit-distance";
 import { TriviaResult } from "../trivia-api";
 import { Context } from "../types";
 import { getChoices, mention, nextRound, getMaxEditDistance } from "../util";
-import { Command } from "./base";
+import { BaseCommand } from "./base";
 
-export class OnMessage extends Command {
+export class OnMessage extends BaseCommand {
   commandNames = [];
   default_timeout = 20;
 

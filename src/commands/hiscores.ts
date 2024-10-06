@@ -4,15 +4,13 @@ import {
   getIdFromMention,
   mention,
   buildWinnersString,
-  createHelpText,
 } from "../util";
-import { Command } from "./base";
+import { BaseCommand } from "./base";
 
-export class HiScores extends Command {
+export class HiScores extends BaseCommand {
   commandNames = ["stats", "stat", "scores", "score"];
-  help = createHelpText(this.commandNames, "View the high scores.", [
-    "user (optional)",
-  ]);
+  description = "View the high scores.";
+  args = ["user (optional)"];
 
   async execute(ctx: Context): Promise<void> {
     const isSelf = ctx.args[0] === "self" || ctx.args[0] === "me";

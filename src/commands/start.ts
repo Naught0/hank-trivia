@@ -1,13 +1,12 @@
 import { getQuestions } from "../trivia-api";
-import { Context } from "../types";
-import { createContext, createHelpText, startRound } from "../util";
-import { Command } from "./base";
+import type { Context, ICommand } from "../types";
+import { createContext, startRound } from "../util";
+import { BaseCommand } from "./base";
 
-export class StartTrivia extends Command {
+export class StartTrivia extends BaseCommand implements ICommand {
   commandNames = ["trivia"];
-  help = createHelpText(this.commandNames, "Start a new trivia game.", [
-    "# of questions (optional)",
-  ]);
+  description = "Start a new trivia game.";
+  args = ["# of questions (optional)"];
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.activeGame?.game.is_active)

@@ -1,13 +1,11 @@
 import { Context } from "../types";
-import { createHelpText } from "../util";
 import { validTimeout } from "../validate";
-import { Command } from "./base";
+import { BaseCommand } from "./base";
 
-export class SetDefaultTimeout extends Command {
+export class SetDefaultTimeout extends BaseCommand {
   commandNames = ["timeout", "roundlen"];
-  help = createHelpText(this.commandNames, "Set the default round length.", [
-    "seconds",
-  ]);
+  description = "Set the default round length.";
+  args = ["number"];
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {
@@ -25,13 +23,10 @@ export class SetDefaultTimeout extends Command {
   }
 }
 
-export class SetDefaultQuestionCount extends Command {
+export class SetDefaultQuestionCount extends BaseCommand {
   commandNames = ["count", "total"];
-  help = createHelpText(
-    this.commandNames,
-    "Set the default number of questions.",
-    ["number"],
-  );
+  args = ["number"];
+  description = "Set the default number of questions.";
 
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length < 1) {

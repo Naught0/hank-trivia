@@ -1,13 +1,12 @@
 import { codeBlock } from "../markdown";
 import { Context } from "../types";
-import { createHelpText } from "../util";
-import { Command } from "./base";
+import { BaseCommand } from "./base";
 
-export class Help extends Command {
+export class Help extends BaseCommand {
   commandNames = ["help", "h"];
-  help = createHelpText(this.commandNames, "Get help with the bot.", [
-    "command (optional)",
-  ]);
+  description = "Get help with commands.";
+  args = ["command (optional)"];
+
   async execute(ctx: Context): Promise<void> {
     if (ctx.args.length) {
       const command = ctx.args[0];

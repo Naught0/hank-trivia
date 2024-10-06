@@ -1,14 +1,14 @@
 import { HandleMessageInput, hank } from "@hank.chat/pdk";
 import { CommandContext, Message, Metadata } from "@hank.chat/types";
+import { TriviaClient } from "./client";
 import { createCommand } from "./commands/base";
 import { SetDefaultQuestionCount, SetDefaultTimeout } from "./commands/config";
+import { Help } from "./commands/help";
 import { HiScores } from "./commands/hiscores";
 import { OnMessage } from "./commands/on-message";
 import { StartTrivia } from "./commands/start";
 import { StopTrivia } from "./commands/stop";
 import { Database } from "./database";
-import { TriviaClient } from "./client";
-import { Help } from "./commands/help";
 
 export * from "@hank.chat/pdk";
 

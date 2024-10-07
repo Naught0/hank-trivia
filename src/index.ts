@@ -3,7 +3,6 @@ import { CommandContext, Message, Metadata } from "@hank.chat/types";
 import { TriviaClient } from "./client";
 import { createCommand } from "./commands/base";
 import { SetDefaultQuestionCount, SetDefaultTimeout } from "./commands/config";
-import { Help } from "./commands/help";
 import { HiScores } from "./commands/hiscores";
 import { OnMessage } from "./commands/on-message";
 import { StartTrivia } from "./commands/start";
@@ -20,7 +19,6 @@ const commands = [
   HiScores,
   SetDefaultTimeout,
   SetDefaultQuestionCount,
-  Help,
 ].map((c) => createCommand(c, hank, db));
 
 for (const cmd of commands) {

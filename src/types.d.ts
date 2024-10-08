@@ -13,7 +13,6 @@ export interface CommandConstructor {
 
 export interface ICommand {
   public commandNames: string[];
-  public help?: string;
   public description?: string;
   public args?: Argument[];
   execute(ctx: Context): Promise<void>;
@@ -25,8 +24,6 @@ export interface Context {
   client: TriviaClient;
   db: Database;
   message: Message;
-  command: string;
-  args: string[];
   reply(content: string): void;
   activeGame: {
     game: Game;
@@ -34,6 +31,11 @@ export interface Context {
     response: TriviaResponse;
     currentQuestion: TriviaResult;
   } | null;
+}
+
+export interface TriviaCommandContext extends Context {
+  command: string;
+  args: string[];
 }
 
 export type HankConfig = Record<TriviaConfigKey, string>;

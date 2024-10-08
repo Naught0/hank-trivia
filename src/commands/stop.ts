@@ -1,12 +1,12 @@
-import { Context, ICommand } from "../types";
+import { TriviaCommandContext } from "../types";
 import { buildWinnersString } from "../util";
 import { BaseCommand } from "./base";
 
-export class StopTrivia extends BaseCommand implements ICommand {
+export class StopTrivia extends BaseCommand {
   commandNames = ["strivia", "stop"];
   description = "Stop the current trivia game.";
 
-  async execute(ctx: Context): Promise<void> {
+  async execute(ctx: TriviaCommandContext): Promise<void> {
     if (!ctx.activeGame?.game.is_active) return;
 
     await ctx.db.stopGame(ctx.activeGame.game.id);

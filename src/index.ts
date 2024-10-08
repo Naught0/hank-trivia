@@ -1,4 +1,4 @@
-import { HandleMessageInput, hank } from "@hank.chat/pdk";
+import { hank } from "@hank.chat/pdk";
 import { CommandContext, Message, Metadata } from "@hank.chat/types";
 import { TriviaClient } from "./client";
 import { createCommand } from "./commands/base";
@@ -63,11 +63,10 @@ function initialize() {
   console.log("Trivia initializing");
 }
 
-async function handle_message(input: HandleMessageInput) {
-  await trivia.handleMessage(input.message);
+async function handle_message(input: Message) {
+  await trivia.handleMessage(input);
 }
 
 async function handle_chat_command(context: CommandContext, message: Message) {
-  console.log(JSON.stringify(context), JSON.stringify(message));
   await trivia.handleCommand(context, message);
 }

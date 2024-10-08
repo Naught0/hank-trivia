@@ -1,9 +1,9 @@
-import { Context } from "../types";
+import { TriviaCommandContext } from "../types";
 import {
-  isMention,
-  getIdFromMention,
-  mention,
   buildWinnersString,
+  getIdFromMention,
+  isMention,
+  mention,
 } from "../util";
 import { BaseCommand } from "./base";
 
@@ -12,7 +12,7 @@ export class HiScores extends BaseCommand {
   description = "View the high scores.";
   args = [{ name: "user", description: "", required: false }];
 
-  async execute(ctx: Context): Promise<void> {
+  async execute(ctx: TriviaCommandContext): Promise<void> {
     const isSelf = ctx.args[0] === "self" || ctx.args[0] === "me";
     const hasMention = isMention(ctx.args[0]);
     const userId = isSelf

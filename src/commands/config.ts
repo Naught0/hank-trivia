@@ -1,16 +1,15 @@
-import { Context } from "../types";
+import { TriviaCommandContext } from "../types";
 import { validTimeout } from "../validate";
 import { BaseCommand } from "./base";
 
 export class SetDefaultTimeout extends BaseCommand {
-  commandNames = ["timeout", "roundlen"];
+  commandNames = ["timeout", "time", "length", "duration"];
   description = "Set the default round length.";
-  args = [{ name: "seconds", description: "", required: true }];
+  args = [{ name: "secs", description: "# of seconds", required: true }];
 
-  async execute(ctx: Context): Promise<void> {
-    if (ctx.args.length < 1) {
-      return ctx.reply(this.help);
-    }
+  async execute(ctx: TriviaCommandContext): Promise<void> {
+    if (ctx.args.length < 1) return ctx.reply("Provide a number of seconds");
+
     const timeout = parseInt(ctx.args[0]);
     if (isNaN(timeout))
       return this.hank.react({ message: ctx.message, emoji: "❌" });
@@ -24,14 +23,12 @@ export class SetDefaultTimeout extends BaseCommand {
 }
 
 export class SetDefaultQuestionCount extends BaseCommand {
-  commandNames = ["count", "total"];
+  commandNames = ["count", "total", "questions"];
   args = [{ name: "questions", description: "# of questions", required: true }];
   description = "Set the default number of questions.";
 
-  async execute(ctx: Context): Promise<void> {
-    if (ctx.args.length < 1) {
-      return ctx.reply(this.help);
-    }
+  async execute(ctx: TriviaCommandContext): Promise<void> {
+    if (ctx.args.length < 1) return ctx.reply("Provide a number of questions");
 
     const count = parseInt(ctx.args[0]);
     if (isNaN(count))

@@ -1,16 +1,18 @@
+import { createContext } from "../context";
 import { getQuestions } from "../trivia-api";
-import type { Context, ICommand } from "../types";
-import { createContext, startRound } from "../util";
+import type { TriviaCommandContext } from "../types";
+import { startRound } from "../util";
+
 import { BaseCommand } from "./base";
 
-export class StartTrivia extends BaseCommand implements ICommand {
-  commandNames = ["trivia"];
+export class StartTrivia extends BaseCommand {
+  commandNames = ["start"];
   description = "Start a new trivia game.";
   args = [
     { name: "amount", description: "number of questions", required: false },
   ];
 
-  async execute(ctx: Context): Promise<void> {
+  async execute(ctx: TriviaCommandContext): Promise<void> {
     if (ctx.activeGame?.game.is_active)
       return this.hank.react({ message: ctx.message, emoji: "❌" });
 
@@ -31,16 +33,12 @@ export class StartTrivia extends BaseCommand implements ICommand {
       ctx.reply("Starting trivia, use !strivia to stop");
       return startRound(
         this.hank,
-        createContext(
-          this.hank,
-          ctx.client,
-          ctx.message,
-          ctx.config,
-          newGame,
+        createContext(this.hank, ctx.client, ctx.message, ctx.config, {
+          game: newGame,
           gameState,
           response,
-          response.results[gameState.question_index],
-        ),
+          currentQuestion: response.results[gameState.question_index],
+        }),
       );
     } catch (error) {
       return ctx.reply("Number of questions must be between 1 and 20");

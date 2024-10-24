@@ -2,7 +2,7 @@ import { hank } from "@hank.chat/pdk";
 import { CommandContext, Message } from "@hank.chat/types";
 import { Database } from "./database";
 import { ICommand } from "./types";
-import { fetchContext } from "./context";
+import { fetchCommandContext, fetchContext } from "./context";
 
 export class TriviaClient {
   commands: ICommand[] = [];
@@ -22,14 +22,9 @@ export class TriviaClient {
     const cmd = this.commands.find((cmd) =>
       cmd.commandNames.includes(hankCtx.subcommand?.name ?? "start"),
     );
-    console.log(
-      "Handling command",
-      hankCtx.subcommand?.name,
-      JSON.stringify(cmd),
-    );
     if (!cmd) return;
 
-    const ctx = await fetchContext(hank, this, message);
+    const ctx = await fetchCommandContext(hank, message, this, hankCtx);
     await cmd.execute(ctx);
   }
 

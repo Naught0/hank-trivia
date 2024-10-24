@@ -42,6 +42,8 @@ export class StartTrivia extends BaseCommand {
         }),
       );
     } catch (error) {
+      await ctx.db.stopGame(newGame.id);
+      console.log("Error starting game", error);
       return ctx.reply("Number of questions must be between 1 and 20");
     }
   }

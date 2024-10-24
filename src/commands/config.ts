@@ -11,14 +11,13 @@ export class SetDefaultTimeout extends BaseCommand {
     if (ctx.args.length < 1) return ctx.reply("Provide a number of seconds");
 
     const timeout = parseInt(ctx.args[0]);
-    if (isNaN(timeout))
-      return this.hank.react({ message: ctx.message, emoji: "❌" });
+    if (isNaN(timeout)) return this.hank.react("❌", ctx.message);
 
     if (!validTimeout(timeout))
       return ctx.reply("Timeout must be between 10 and 60 seconds");
 
-    await ctx.db.setRoundTimeout(ctx.message.channelId, timeout);
-    this.hank.react({ message: ctx.message, emoji: "✅" });
+    await ctx.db.setRoundTimeout(ctx.message.channel!.id, timeout);
+    this.hank.react("✅", ctx.message);
   }
 }
 
@@ -31,14 +30,13 @@ export class SetDefaultQuestionCount extends BaseCommand {
     if (ctx.args.length < 1) return ctx.reply("Provide a number of questions");
 
     const count = parseInt(ctx.args[0]);
-    if (isNaN(count))
-      return this.hank.react({ message: ctx.message, emoji: "❌" });
+    if (isNaN(count)) return this.hank.react("❌", ctx.message);
 
     try {
-      await ctx.db.setDefaultQuestionCount(ctx.message.channelId, count);
+      await ctx.db.setDefaultQuestionCount(ctx.message.channel!.id, count);
     } catch (error) {
       return ctx.reply((error as Error).message);
     }
-    this.hank.react({ message: ctx.message, emoji: "✅" });
+    this.hank.react("✅", ctx.message);
   }
 }

@@ -22,6 +22,11 @@ export class TriviaClient {
     const cmd = this.commands.find((cmd) =>
       cmd.commandNames.includes(hankCtx.subcommand?.name ?? "start"),
     );
+    console.log(
+      "Handling command",
+      hankCtx.subcommand?.name,
+      JSON.stringify(cmd),
+    );
     if (!cmd) return;
 
     const ctx = await fetchContext(hank, this, message);

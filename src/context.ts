@@ -25,9 +25,12 @@ export async function fetchContext(
   message: Message,
   commandContext?: CommandContext,
 ): Promise<Context | TriviaCommandContext> {
-  const game = await client.db.getActiveGame(message.channelId);
+  if (!message.channel)
+    throw new Error("Attempting to fetch context for a non-Channel source");
 
-  const config = await client.db.getConfig(message.channelId);
+  const channelId = message.channel.id;
+  const game = await client.db.getActiveGame(channelId);
+  const config = await client.db.getConfig(channelId);
   if (game) {
     const gameState = await client.db.getGameState(game.id);
     const response = JSON.parse(gameState.api_response) as TriviaResponse;
@@ -65,6 +68,10 @@ export function createContext(
     commandContext?: CommandContext;
   },
 ): Context | TriviaCommandContext {
+  if (!message.channel)
+    throw new Error("Attempting to fetch context for a non-Channel source");
+  const channelId = message.channel.id;
+
   const activeGame = game?.is_active
     ? {
         game,
@@ -80,10 +87,7 @@ export function createContext(
     command: commandContext?.subcommand?.name,
     args: commandContext?.subcommand?.arguments.map((arg) => arg.value),
     message,
-    reply: (content: string) =>
-      hank.sendMessage(
-        Message.create({ content, channelId: message.channelId }),
-      ),
+    reply: (content: string) => hank.sendMessage(Message.create({ content })),
     activeGame,
   };
 }

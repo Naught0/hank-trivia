@@ -9,6 +9,7 @@ export class OnMessage extends BaseCommand {
   default_timeout = 20;
 
   async execute(ctx: Context): Promise<void> {
+    if (!ctx.message.author) return;
     if (!ctx.activeGame?.game.is_active) return;
 
     const { answerIndex, choices } = getChoices(ctx.activeGame.currentQuestion);
@@ -19,9 +20,9 @@ export class OnMessage extends BaseCommand {
     );
     if (!isCorrect) return;
 
-    await ctx.db.createScore(ctx.message.authorId, ctx.activeGame.game.id);
+    await ctx.db.createScore(ctx.message.author.id, ctx.activeGame.game.id);
     ctx.reply(
-      `Correct ${mention(ctx.message.authorId)}! The answer was: ${choices[answerIndex]}`,
+      `Correct ${mention(ctx.message.author.id)}! The answer was: ${choices[answerIndex]}`,
     );
     await nextRound(this.hank, ctx);
   }

@@ -16,7 +16,7 @@ export class HiScores extends BaseCommand {
     const isSelf = ctx.args[0] === "self" || ctx.args[0] === "me";
     const hasMention = isMention(ctx.args[0]);
     const userId = isSelf
-      ? ctx.message.authorId
+      ? ctx.message.author!.id
       : hasMention
         ? getIdFromMention(ctx.args[0])
         : null;

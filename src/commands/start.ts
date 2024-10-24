@@ -13,11 +13,12 @@ export class StartTrivia extends BaseCommand {
   ];
 
   async execute(ctx: TriviaCommandContext): Promise<void> {
+    if (!ctx.message.channel) return;
     if (ctx.activeGame?.game.is_active)
-      return this.hank.react({ message: ctx.message, emoji: "❌" });
+      return this.hank.react("❌", ctx.message);
 
-    const newGame = await ctx.db.createGame(ctx.message.channelId);
-    if (!newGame) return this.hank.react({ message: ctx.message, emoji: "❌" });
+    const newGame = await ctx.db.createGame(ctx.message.channel.id);
+    if (!newGame) return this.hank.react("❌", ctx.message);
 
     try {
       const response = getQuestions({

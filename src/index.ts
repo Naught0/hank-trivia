@@ -43,6 +43,7 @@ export function plugin() {
     allowedHosts: ["*"],
     subcommands: commands.map((c) => ({
       name: c.commandNames[0],
+      argRequiredElseHelp: false,
       description: c.description,
       arguments: c.args ?? [],
       subcommands: [],
@@ -51,7 +52,7 @@ export function plugin() {
   };
   hank.registerInstallFunction(install);
   hank.registerInitializeFunction(initialize);
-  hank.registerMessageHandler(handle_message);
+  hank.registerChatMessageHandler(handle_message);
   hank.registerChatCommandHandler(handle_chat_command);
 }
 
@@ -68,5 +69,6 @@ async function handle_message(input: Message) {
 }
 
 async function handle_chat_command(context: CommandContext, message: Message) {
+  console.log("Got command", JSON.stringify(context.subcommand));
   await trivia.handleCommand(context, message);
 }

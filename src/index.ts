@@ -1,5 +1,10 @@
 import { hank } from "@hank.chat/pdk";
-import { CommandContext, Message, Metadata } from "@hank.chat/types";
+import {
+  CommandContext,
+  Message,
+  Metadata,
+  PreparedStatement,
+} from "@hank.chat/types";
 import { TriviaClient } from "./client";
 import { createCommand } from "./commands/base";
 import { SetDefaultQuestionCount, SetDefaultTimeout } from "./commands/config";

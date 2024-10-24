@@ -11,6 +11,14 @@ export class OnMessage extends BaseCommand {
   async execute(ctx: Context): Promise<void> {
     if (!ctx.message.author) return;
     if (!ctx.activeGame?.game.is_active) return;
+    if (
+      await ctx.db.userAlreadyAnswered(
+        ctx.message.author.id,
+        ctx.activeGame.game.id,
+        ctx.activeGame.gameState.question_index,
+      )
+    )
+      return;
 
     const { answerIndex, choices } = getChoices(ctx.activeGame.currentQuestion);
     const isCorrect = await this.checkAnswer(
@@ -18,9 +26,21 @@ export class OnMessage extends BaseCommand {
       choices[answerIndex],
       ctx.activeGame.currentQuestion,
     );
-    if (!isCorrect) return;
+    const score = {
+      game_id: ctx.activeGame.game.id,
+      discord_user_id: ctx.message.author.id,
+      question_index: ctx.activeGame.gameState.question_index,
+    };
+    if (!isCorrect) {
+      console.log("Wrong answer bucko");
+      await ctx.db.createScore({ ...score, value: 0 });
+      return this.hank.react("❌", ctx.message);
+    }
 
-    await ctx.db.createScore(ctx.message.author.id, ctx.activeGame.game.id);
+    await ctx.db.createScore({
+      ...score,
+      value: 1,
+    });
     ctx.reply(
       `Correct ${mention(ctx.message.author.id)}! The answer was: ${choices[answerIndex]}`,
     );

@@ -20,7 +20,7 @@ export class Database {
       sql: "CREATE TABLE IF NOT EXISTS trivia_game_state (id INTEGER PRIMARY KEY AUTOINCREMENT, game_id INTEGER, api_response TEXT, question_index INTEGER, question_total INTEGER)",
     });
     const createScoresTable = PreparedStatement.create({
-      sql: "CREATE TABLE IF NOT EXISTS trivia_score (id INTEGER PRIMARY KEY AUTOINCREMENT, discord_user_id TEXT, game_id INTEGER, created_at timestamp DEFAULT current_timestamp)",
+      sql: "CREATE TABLE IF NOT EXISTS trivia_score (id INTEGER PRIMARY KEY AUTOINCREMENT, question_index number, value number, discord_user_id TEXT, game_id INTEGER, created_at timestamp DEFAULT current_timestamp)",
     });
     const createConfigTable = PreparedStatement.create({
       sql: "CREATE TABLE IF NOT EXISTS trivia_config (id INTEGER PRIMARY KEY AUTOINCREMENT, channel_id TEXT, key TEXT, value TEXT, UNIQUE (channel_id, key))",
@@ -145,18 +145,45 @@ export class Database {
     return resp[0];
   }
 
-  public async createScore(discord_user_id: string, gameId: number) {
+  public async createScore({
+    game_id,
+    discord_user_id,
+    question_index,
+    value,
+  }: Pick<
+    GameScore,
+    "game_id" | "discord_user_id" | "question_index" | "value"
+  >) {
     const stmt = PreparedStatement.create({
-      sql: "INSERT INTO trivia_score (discord_user_id, game_id) VALUES (?, ?) RETURNING *",
-      values: [discord_user_id, gameId.toString()],
+      sql: "INSERT INTO trivia_score (discord_user_id, question_index, value, game_id) VALUES (?, ?, ?, ?)",
+      values: [
+        discord_user_id,
+        question_index.toString(),
+        value.toString(),
+        game_id.toString(),
+      ],
     });
 
     await this.hank.dbQuery<DBGameScore>(stmt);
   }
 
+  public async userAlreadyAnswered(
+    discord_user_id: string,
+    game_id: number,
+    question_index: number,
+  ) {
+    const stmt = PreparedStatement.create({
+      sql: "SELECT * FROM trivia_score WHERE discord_user_id = ? AND game_id = ? AND question_index = ?",
+      values: [discord_user_id, game_id.toString(), question_index.toString()],
+    });
+    const score = await this.hank.dbQuery<DBGameScore>(stmt);
+
+    return score.length > 0;
+  }
+
   public async getGameScores(gameId: number) {
     const stmt = PreparedStatement.create({
-      sql: "SELECT discord_user_id, count(*) as count FROM trivia_score WHERE game_id = ? GROUP BY discord_user_id ORDER BY count DESC LIMIT 3",
+      sql: "SELECT discord_user_id, SUM(value) as count FROM trivia_score WHERE game_id = ? GROUP BY discord_user_id ORDER BY count DESC LIMIT 3",
       values: [gameId.toString()],
     });
     return await this.hank.dbQuery<UserScore>(stmt);
@@ -213,6 +240,8 @@ export interface GameState {
 
 export interface GameScore {
   id: number;
+  question_index: number;
+  value: number; // 0 for wrong 1 for correct
   discord_user_id: string;
   game_id: number;
 }

@@ -52,7 +52,7 @@ export function plugin() {
   };
   hank.registerInstallFunction(install);
   hank.registerInitializeFunction(initialize);
-  hank.registerChatMessageHandler(handle_message);
+  hank.registerChatMessageHandler(handle_chat_message);
   hank.registerChatCommandHandler(handle_chat_command);
 }
 
@@ -64,11 +64,10 @@ function initialize() {
   console.log("Trivia initializing");
 }
 
-async function handle_message(input: Message) {
+async function handle_chat_message(input: Message) {
   await trivia.handleMessage(input);
 }
 
 async function handle_chat_command(context: CommandContext, message: Message) {
-  console.log("Got command", JSON.stringify(context.subcommand));
   await trivia.handleCommand(context, message);
 }

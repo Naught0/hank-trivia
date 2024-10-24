@@ -32,7 +32,6 @@ export class OnMessage extends BaseCommand {
       question_index: ctx.activeGame.gameState.question_index,
     };
     if (!isCorrect) {
-      console.log("Wrong answer bucko");
       await ctx.db.createScore({ ...score, value: 0 });
       return this.hank.react("❌", ctx.message);
     }

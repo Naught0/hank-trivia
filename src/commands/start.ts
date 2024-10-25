@@ -31,7 +31,7 @@ export class StartTrivia extends BaseCommand {
         game_id: newGame.id,
       });
 
-      ctx.reply("Starting trivia, use !strivia to stop");
+      ctx.reply("Starting trivia, use `trivia stop` to stop");
       return startRound(
         this.hank,
         createContext(this.hank, ctx.client, ctx.message, ctx.config, {
